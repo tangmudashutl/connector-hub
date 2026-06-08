@@ -6,10 +6,22 @@ let currentPage = 1;
 let searchQuery = '';
 let dateFrom = '';
 let dateTo = '';
+let ARTICLES = [];
+
+// Merge all data sources
+function loadData() {
+  const parts = [];
+  ['行业新闻','技术文章','厂家档案'].forEach(cat => {
+    const key = '_data_' + cat.replace(' ','_');
+    if (window[key]) parts.push(...window[key]);
+  });
+  return parts;
+}
 
 // ====== INIT ======
 function init() {
-  if (typeof ARTICLES === 'undefined') {
+  ARTICLES = loadData();
+  if (ARTICLES.length === 0) {
     document.getElementById('articleGrid').innerHTML = '<div class="loading">数据加载失败，请刷新页面</div>';
     return;
   }
