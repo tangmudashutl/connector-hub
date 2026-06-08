@@ -136,6 +136,8 @@ function init() {
   setupBreadcrumb();
   setupBackToTop();
   setupSubFilters();
+  setupNewsletter();
+  setupMfrShowcase();
   render();
   updateSidebar();
 }
@@ -485,6 +487,9 @@ function render() {
   grid.querySelectorAll('.article-card').forEach((card, i) => {
     card.addEventListener('click', () => showDetail(pageArticles[i]));
   });
+
+  // Update dynamic Schema.org
+  updateDynamicSchemas(pageArticles);
 }
 
 function cardHTML(a) {
@@ -596,6 +601,50 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') hideDetail();
 });
 
+// ====== DYNAMIC SCHEMA ======
+function updateDynamicSchemas(articles) {
+  // BreadcrumbList
+  const catLabel = currentCat === 'all' ? '全部文章' : currentCat;
+  const breadcrumbJSON = {
+    '@context': 'https://schema.org',
+    '@type': 'BreadcrumbList',
+    'itemListElement': [
+      { '@type': 'ListItem', 'position': 1, 'name': '首页', 'item': 'https://tangmudashutl.github.io/connector-hub/' },
+      { '@type': 'ListItem', 'position': 2, 'name': catLabel }
+    ]
+  };
+  upsertSchema('schema-breadcrumb', breadcrumbJSON);
+
+  // ItemList for current page articles
+  const itemListJSON = {
+    '@context': 'https://schema.org',
+    '@type': 'ItemList',
+    'numberOfItems': articles.length,
+    'itemListElement': articles.slice(0, 10).map((a, i) => ({
+      '@type': 'ListItem',
+      'position': i + 1,
+      'item': {
+        '@type': 'Article',
+        'name': a.title,
+        'description': (a.summary || '').substring(0, 200),
+        'datePublished': (a.date || '').replace(/年|月|日/g, '-').replace(/--$/,''),
+        'about': a.category
+      }
+    }))
+  };
+  upsertSchema('schema-itemlist', itemListJSON);
+}
+
+function upsertSchema(id, json) {
+  const existing = document.getElementById(id);
+  if (existing) existing.remove();
+  const script = document.createElement('script');
+  script.type = 'application/ld+json';
+  script.id = id;
+  script.textContent = JSON.stringify(json, null, 2);
+  document.head.appendChild(script);
+}
+
 // ====== SIDEBAR ======
 function updateSidebar() {
   // Panel 1: 本周热门 - top 6 articles from the most recent week
@@ -688,6 +737,102 @@ document.addEventListener('click', (e) => {
     showDetail(ARTICLES[globalIdx]);
   }
 });
+
+// ====== MANUFACTURER SHOWCASE ======
+function setupMfrShowcase() {
+  const mfrArticles = ARTICLES.filter(a => a.category === '厂家档案');
+  const grid = document.getElementById('mfrShowcaseGrid');
+  const moreBtn = document.getElementById('mfrShowcaseMore');
+
+  // Show up to 6 manufacturers, prioritize those with more content
+  const showcase = mfrArticles
+    .sort((a, b) => (b.content || '').length - (a.content || '').length)
+    .slice(0, 6);
+
+  grid.innerHTML = showcase.map(a => {
+    const summary = (a.summary || a.content || '').substring(0, 80);
+    const keywords = (a.keywords || '').split(',').filter(Boolean).slice(0, 3);
+    return `<div class="mfr-card" data-global="${ARTICLES.indexOf(a)}">
+      <div class="mfr-card-header">
+        <div class="mfr-card-icon">🏭</div>
+        <span class="mfr-card-name">${escapeHTML(a.title)}</span>
+      </div>
+      <div class="mfr-card-info">${escapeHTML(summary)}</div>
+      ${keywords.length ? `<div class="mfr-card-tags">${keywords.map(k => `<span class="mfr-card-tag">${escapeHTML(k.trim())}</span>`).join('')}</div>` : ''}
+    </div>`;
+  }).join('');
+
+  // Click handlers
+  grid.querySelectorAll('.mfr-card').forEach(card => {
+    card.addEventListener('click', () => {
+      const idx = parseInt(card.dataset.global);
+      if (!isNaN(idx) && ARTICLES[idx]) {
+        showDetail(ARTICLES[idx]);
+      }
+    });
+  });
+
+  // "查看全部" button - switch to 厂家档案 tab
+  moreBtn.addEventListener('click', () => {
+    document.querySelectorAll('.nav-link').forEach(b => b.classList.remove('active'));
+    const targetNav = document.querySelector('.nav-link[data-cat="厂家档案"]');
+    if (targetNav) targetNav.classList.add('active');
+    currentCat = '厂家档案';
+    currentPage = 1;
+    subFilter = 'all';
+    document.querySelectorAll('.subfilter').forEach(b => b.classList.remove('active'));
+    const allSub = document.querySelector('.subfilter[data-subfilter="all"]');
+    if (allSub) allSub.classList.add('active');
+    updateBreadcrumb();
+    render();
+    window.scrollTo({ top: document.querySelector('.container').offsetTop - 80, behavior: 'smooth' });
+  });
+}
+
+// ====== NEWSLETTER ======
+function setupNewsletter() {
+  const form = document.getElementById('newsletterForm');
+  const emailInput = document.getElementById('newsletterEmail');
+  const btn = document.getElementById('newsletterBtn');
+  const status = document.getElementById('newsletterStatus');
+
+  // Check if already subscribed
+  const saved = localStorage.getItem('connectorhub_newsletter');
+  if (saved) {
+    emailInput.value = saved;
+    emailInput.disabled = true;
+    btn.disabled = true;
+    btn.textContent = '已订阅 ✓';
+    status.textContent = '感谢订阅！每周一早10点准时推送';
+    status.className = 'newsletter-status success';
+    return;
+  }
+
+  form.addEventListener('submit', (e) => {
+    e.preventDefault();
+    const email = emailInput.value.trim();
+
+    // Basic email validation
+    if (!email) {
+      status.textContent = '请输入邮箱地址';
+      status.className = 'newsletter-status error';
+      return;
+    }
+    if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+      status.textContent = '请输入有效的邮箱地址';
+      status.className = 'newsletter-status error';
+      return;
+    }
+
+    // Save subscription
+    localStorage.setItem('connectorhub_newsletter', email);
+    emailInput.disabled = true;
+    btn.disabled = true;
+    btn.textContent = '已订阅 ✓';
+    status.textContent = '订阅成功！每周一早10点准时推送';
+    status.className = 'newsletter-status success';
+  });
+}
 
 // ====== RELATED ARTICLES ======
 function findRelatedArticles(article, count = 3) {

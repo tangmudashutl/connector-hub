@@ -3,8 +3,33 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
+<meta name="description" content="全球连接器行业知识库，实时追踪连接器行业动态，聚合全球一手资讯、技术解析与厂家档案。208篇专业文章，涵盖行业新闻、技术文章、厂家档案。">
 <title>ConnectorHUB - 连接器行业知识库</title>
 <link rel="stylesheet" href="style.css">
+<!-- Schema.org JSON-LD -->
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "WebSite",
+  "name": "ConnectorHUB",
+  "url": "https://tangmudashutl.github.io/connector-hub/",
+  "description": "全球连接器行业知识库",
+  "potentialAction": {
+    "@type": "SearchAction",
+    "target": "https://tangmudashutl.github.io/connector-hub/?q={search_term_string}",
+    "query-input": "required name=search_term_string"
+  }
+}
+</script>
+<script type="application/ld+json">
+{
+  "@context": "https://schema.org",
+  "@type": "Organization",
+  "name": "ConnectorHUB",
+  "url": "https://tangmudashutl.github.io/connector-hub/",
+  "description": "全球连接器行业知识库，聚合连接器行业新闻、技术文章与厂家档案"
+}
+</script>
 </head>
 <body>
 
@@ -47,6 +72,19 @@
   </div>
   <div class="hero-particles"></div>
 </div>
+
+<!-- Manufacturer Showcase -->
+<section class="mfr-showcase" id="mfrShowcase">
+  <div class="mfr-showcase-inner">
+    <div class="mfr-showcase-header">
+      <h2 class="mfr-showcase-title">🏭 连接器厂商档案</h2>
+      <button class="mfr-showcase-more" id="mfrShowcaseMore">查看全部 →</button>
+    </div>
+    <div class="mfr-showcase-grid" id="mfrShowcaseGrid">
+      <div class="sidebar-loading" style="grid-column:1/-1;text-align:center">加载中...</div>
+    </div>
+  </div>
+</section>
 
 <div class="container">
   <!-- Main Content -->
@@ -121,6 +159,15 @@
     <div class="sidebar-panel" id="sidebarRecent">
       <h3 class="sidebar-title">🕐 最近更新</h3>
       <div class="sidebar-loading">加载中...</div>
+    </div>
+    <div class="sidebar-panel sidebar-newsletter" id="sidebarNewsletter">
+      <h3 class="sidebar-title">📬 行业周报订阅</h3>
+      <p class="newsletter-desc">每周一早10点，自动推送连接器行业最新动态</p>
+      <form class="newsletter-form" id="newsletterForm" onsubmit="return false">
+        <input type="email" class="newsletter-input" id="newsletterEmail" placeholder="输入邮箱地址" autocomplete="email">
+        <button type="submit" class="newsletter-btn" id="newsletterBtn">立即订阅</button>
+      </form>
+      <p class="newsletter-status" id="newsletterStatus"></p>
     </div>
   </aside>
 </div>
