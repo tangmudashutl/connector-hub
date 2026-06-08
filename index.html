@@ -49,63 +49,80 @@
 </div>
 
 <div class="container">
-  <!-- Breadcrumb -->
-  <nav class="breadcrumb" id="breadcrumb">
-    <a href="#" class="breadcrumb-link" data-cat="all">首页</a>
-    <span class="breadcrumb-sep">›</span>
-    <span class="breadcrumb-current" id="breadcrumbCurrent">全部文章</span>
-  </nav>
+  <!-- Main Content -->
+  <main class="main-content">
+    <!-- Breadcrumb -->
+    <nav class="breadcrumb" id="breadcrumb">
+      <a href="#" class="breadcrumb-link" data-cat="all">首页</a>
+      <span class="breadcrumb-sep">›</span>
+      <span class="breadcrumb-current" id="breadcrumbCurrent">全部文章</span>
+    </nav>
 
-  <!-- Stats bar -->
-  <div class="stats-bar" id="statsBar">
-    <span class="stat-item" id="statCount">加载中...</span>
-    <span class="stat-sep">|</span>
-    <span class="stat-item" id="statRange"></span>
-    <span class="stat-sep">|</span>
-    <span class="stat-item stat-dots" id="statDots"></span>
-  </div>
-
-  <!-- Search & Filter -->
-  <div class="toolbar">
-    <div class="search-box">
-      <input type="text" id="searchInput" placeholder="搜索关键词..." autocomplete="off">
-      <button id="searchClear" class="search-clear" style="display:none">✕</button>
+    <!-- Stats bar -->
+    <div class="stats-bar" id="statsBar">
+      <span class="stat-item" id="statCount">加载中...</span>
+      <span class="stat-sep">|</span>
+      <span class="stat-item" id="statRange"></span>
+      <span class="stat-sep">|</span>
+      <span class="stat-item stat-dots" id="statDots"></span>
     </div>
-    <div class="week-selector">
-      <select id="weekSelect">
-        <option value="all">全部时间</option>
-      </select>
+
+    <!-- Search & Filter -->
+    <div class="toolbar">
+      <div class="search-box">
+        <input type="text" id="searchInput" placeholder="搜索关键词..." autocomplete="off">
+        <button id="searchClear" class="search-clear" style="display:none">✕</button>
+      </div>
+      <div class="week-selector">
+        <select id="weekSelect">
+          <option value="all">全部时间</option>
+        </select>
+      </div>
+      <div class="quick-filters">
+        <button class="qfilter" data-range="week">本周</button>
+        <button class="qfilter" data-range="month">本月</button>
+        <button class="qfilter" data-range="3month">近3月</button>
+      </div>
     </div>
-    <div class="quick-filters">
-      <button class="qfilter" data-range="week">本周</button>
-      <button class="qfilter" data-range="month">本月</button>
-      <button class="qfilter" data-range="3month">近3月</button>
+
+    <!-- Content Type Sub-filters -->
+    <div class="subfilter-bar" id="subfilterBar">
+      <span class="subfilter-label">内容类型：</span>
+      <button class="subfilter active" data-subfilter="all">全部</button>
+      <button class="subfilter" data-subfilter="行业新闻"><span class="sf-dot dot-news"></span>行业新闻</button>
+      <button class="subfilter" data-subfilter="技术文章"><span class="sf-dot dot-tech"></span>技术文章</button>
+      <button class="subfilter" data-subfilter="厂家档案"><span class="sf-dot dot-mfr"></span>厂家档案</button>
     </div>
-  </div>
 
-  <!-- Content Type Sub-filters -->
-  <div class="subfilter-bar" id="subfilterBar">
-    <span class="subfilter-label">内容类型：</span>
-    <button class="subfilter active" data-subfilter="all">全部</button>
-    <button class="subfilter" data-subfilter="行业新闻"><span class="sf-dot dot-news"></span>行业新闻</button>
-    <button class="subfilter" data-subfilter="技术文章"><span class="sf-dot dot-tech"></span>技术文章</button>
-    <button class="subfilter" data-subfilter="厂家档案"><span class="sf-dot dot-mfr"></span>厂家档案</button>
-  </div>
+    <!-- Article Grid -->
+    <div class="article-grid" id="articleGrid"></div>
 
-  <!-- Article Grid -->
-  <div class="article-grid" id="articleGrid">
-    <div class="loading">加载中…</div>
-  </div>
+    <!-- Pagination -->
+    <div class="pagination" id="pagination"></div>
 
-  <!-- Pagination -->
-  <div class="pagination" id="pagination"></div>
+    <!-- No results -->
+    <div class="no-results" id="noResults" style="display:none">
+      <div class="no-results-icon">🔍</div>
+      <p>没有找到匹配的文章</p>
+      <p class="hint">试试调整筛选条件或搜索关键词</p>
+    </div>
+  </main>
 
-  <!-- No results -->
-  <div class="no-results" id="noResults" style="display:none">
-    <div class="no-results-icon">🔍</div>
-    <p>没有找到匹配的文章</p>
-    <p class="hint">试试调整筛选条件或搜索关键词</p>
-  </div>
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-panel" id="sidebarHot">
+      <h3 class="sidebar-title">🔥 本周热门</h3>
+      <div class="sidebar-loading">加载中...</div>
+    </div>
+    <div class="sidebar-panel" id="sidebarCats">
+      <h3 class="sidebar-title">📊 分类统计</h3>
+      <div class="sidebar-loading">加载中...</div>
+    </div>
+    <div class="sidebar-panel" id="sidebarRecent">
+      <h3 class="sidebar-title">🕐 最近更新</h3>
+      <div class="sidebar-loading">加载中...</div>
+    </div>
+  </aside>
 </div>
 
 <!-- Detail Modal -->
@@ -124,6 +141,11 @@
       <div class="article-summary" id="detailSummary"></div>
       <div class="article-content" id="detailContent"></div>
       <div class="article-link" id="detailLink"></div>
+      <!-- Related Articles -->
+      <div class="related-section" id="detailRelated">
+        <h4 class="related-title">📎 相关推荐</h4>
+        <div class="related-list" id="relatedList"></div>
+      </div>
     </div>
   </div>
 </div>

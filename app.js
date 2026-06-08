@@ -119,9 +119,10 @@ function buildWeekDropdown() {
 
 // ====== INIT ======
 function init() {
+  showSkeleton();
   ARTICLES = loadData();
   if (ARTICLES.length === 0) {
-    document.getElementById('articleGrid').innerHTML = '<div class="loading">数据加载失败，请刷新页面</div>';
+    document.getElementById('articleGrid').innerHTML = '<div class="skeleton-grid" style="grid-column:1/-1;text-align:center;padding:60px;color:var(--text-muted)">数据加载失败，请刷新页面</div>';
     return;
   }
   buildWeekDropdown();
@@ -136,6 +137,7 @@ function init() {
   setupBackToTop();
   setupSubFilters();
   render();
+  updateSidebar();
 }
 
 // ====== NAV COUNTS ======
@@ -395,8 +397,40 @@ function getFiltered() {
   return articles;
 }
 
+// ====== SKELETON LOADING ======
+function showSkeleton() {
+  const grid = document.getElementById('articleGrid');
+  grid.className = 'skeleton-grid';
+  const cards = [];
+  for (let i = 0; i < 8; i++) {
+    cards.push(`
+      <div class="skeleton-card">
+        <div class="skeleton-icon-row">
+          <div class="skeleton-icon"></div>
+          <div class="skeleton-line w40"></div>
+        </div>
+        <div class="skeleton-line h20 w100"></div>
+        <div class="skeleton-line w80"></div>
+        <div class="skeleton-line w100"></div>
+        <div class="skeleton-line w60"></div>
+        <div class="skeleton-footer">
+          <div class="skeleton-line w30"></div>
+          <div class="skeleton-line w20"></div>
+        </div>
+      </div>`);
+  }
+  grid.innerHTML = cards.join('');
+}
+
+function hideSkeleton() {
+  const grid = document.getElementById('articleGrid');
+  grid.className = 'article-grid';
+  grid.innerHTML = '';
+}
+
 // ====== RENDER ======
 function render() {
+  hideSkeleton();
   const filtered = getFiltered();
   const total = filtered.length;
   const totalPages = Math.ceil(total / PER_PAGE);
@@ -544,6 +578,9 @@ function showDetail(article) {
 
   document.getElementById('detailModal').classList.add('active');
   document.body.style.overflow = 'hidden';
+
+  // Render related articles
+  renderRelated(article);
 }
 
 function hideDetail() {
@@ -558,6 +595,175 @@ document.getElementById('detailModal').addEventListener('click', (e) => {
 document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') hideDetail();
 });
+
+// ====== SIDEBAR ======
+function updateSidebar() {
+  // Panel 1: 本周热门 - top 6 articles from the most recent week
+  const now = new Date();
+  const thisWeek = getISOWeek(now);
+  const weekArticles = ARTICLES.filter(a => a._weekKey === thisWeek.key);
+
+  const hotPanel = document.getElementById('sidebarHot');
+  if (weekArticles.length === 0) {
+    const recent6 = ARTICLES
+      .filter(a => parseArticleDate(a))
+      .sort((a, b) => (parseArticleDate(b) || 0) - (parseArticleDate(a) || 0))
+      .slice(0, 6);
+    hotPanel.innerHTML = '<h3 class="sidebar-title">🔥 本周热门</h3>' + renderSidebarList(recent6, '本周暂无新文章，以下是最近更新');
+  } else {
+    hotPanel.innerHTML = '<h3 class="sidebar-title">🔥 本周热门</h3>' + renderSidebarList(weekArticles.slice(0, 6));
+  }
+
+  // Panel 2: 分类统计 (clickable)
+  const catPanel = document.getElementById('sidebarCats');
+  const cats = [
+    { name: '行业新闻', dot: 'var(--primary)', icon: '📰' },
+    { name: '技术文章', dot: 'var(--accent)', icon: '🔧' },
+    { name: '厂家档案', dot: 'var(--orange)', icon: '🏭' }
+  ];
+  catPanel.innerHTML = `
+    <h3 class="sidebar-title">📊 分类统计</h3>
+    ${cats.map(c => {
+      const count = ARTICLES.filter(a => a.category === c.name).length;
+      const pct = ARTICLES.length ? Math.round(count / ARTICLES.length * 100) : 0;
+      return `<div class="sidebar-cat-stat" data-cat="${c.name}">
+        <span class="sidebar-cat-name">
+          <span class="sidebar-cat-dot" style="background:${c.dot}"></span>${c.icon} ${c.name}
+        </span>
+        <span class="sidebar-cat-num">${count} 篇 (${pct}%)</span>
+      </div>`;
+    }).join('')}
+  `;
+  // Click handlers
+  catPanel.querySelectorAll('.sidebar-cat-stat').forEach(el => {
+    el.addEventListener('click', () => {
+      const cat = el.dataset.cat;
+      document.querySelectorAll('.nav-link').forEach(b => b.classList.remove('active'));
+      const targetNav = document.querySelector(`.nav-link[data-cat="${cat}"]`);
+      if (targetNav) targetNav.classList.add('active');
+      currentCat = cat;
+      currentPage = 1;
+      subFilter = 'all';
+      document.querySelectorAll('.subfilter').forEach(b => b.classList.remove('active'));
+      const allSub = document.querySelector('.subfilter[data-subfilter="all"]');
+      if (allSub) allSub.classList.add('active');
+      updateBreadcrumb();
+      render();
+      window.scrollTo({ top: 0, behavior: 'smooth' });
+    });
+  });
+
+  // Panel 3: 最近更新 - 5 most recent by date
+  const recentPanel = document.getElementById('sidebarRecent');
+  const recent5 = ARTICLES
+    .filter(a => parseArticleDate(a))
+    .sort((a, b) => (parseArticleDate(b) || 0) - (parseArticleDate(a) || 0))
+    .slice(0, 5);
+  recentPanel.innerHTML = '<h3 class="sidebar-title">🕐 最近更新</h3>' + renderSidebarList(recent5, '暂无更新');
+}
+
+function renderSidebarList(articles, emptyMsg) {
+  if (!articles || articles.length === 0) {
+    return `<div class="sidebar-empty">${emptyMsg || '暂无数据'}</div>`;
+  }
+  const listHtml = articles.map((a, i) => {
+    const badgeClass = a.category === '行业新闻' ? 'badge-news' : a.category === '技术文章' ? 'badge-tech' : 'badge-mfr';
+    return `<div class="sidebar-item" data-idx="${i}" data-global="${ARTICLES.indexOf(a)}">
+      <div class="sidebar-item-title">${escapeHTML(a.title)}</div>
+      <div class="sidebar-item-meta">
+        <span class="article-badge ${badgeClass} sidebar-item-badge">${a.category}</span>
+        <span>${a.date || ''}</span>
+      </div>
+    </div>`;
+  }).join('');
+  return listHtml;
+}
+
+// Sidebar click handlers delegation
+document.addEventListener('click', (e) => {
+  const item = e.target.closest('.sidebar-item');
+  if (!item) return;
+  const globalIdx = parseInt(item.dataset.global);
+  if (!isNaN(globalIdx) && ARTICLES[globalIdx]) {
+    showDetail(ARTICLES[globalIdx]);
+  }
+});
+
+// ====== RELATED ARTICLES ======
+function findRelatedArticles(article, count = 3) {
+  const articleKeywords = (article.keywords || '').split(',').map(k => k.trim()).filter(Boolean);
+
+  // Score other articles by keyword overlap + same category
+  const scored = ARTICLES
+    .filter(a => a !== article && a.title !== article.title)
+    .map(a => {
+      let score = 0;
+      // Same category bonus
+      if (a.category === article.category) score += 3;
+      // Keyword overlap
+      const aKeywords = (a.keywords || '').split(',').map(k => k.trim()).filter(Boolean);
+      const commonKeywords = articleKeywords.filter(k => aKeywords.includes(k));
+      score += commonKeywords.length * 5;
+      // Title word overlap
+      const titleWords = (article.title || '').split(/[\s，,、]+/).filter(w => w.length > 1);
+      const aTitleWords = (a.title || '').split(/[\s，,、]+/).filter(w => w.length > 1);
+      const commonTitle = titleWords.filter(w => aTitleWords.includes(w));
+      score += commonTitle.length * 2;
+      // Recent bonus
+      const d = parseArticleDate(a);
+      if (d) {
+        const daysAgo = (new Date() - d) / 86400000;
+        if (daysAgo < 30) score += 1;
+      }
+      return { article: a, score };
+    })
+    .filter(s => s.score > 0)
+    .sort((a, b) => b.score - a.score)
+    .slice(0, count);
+
+  // If not enough, fill with same-category articles
+  if (scored.length < count) {
+    const sameCat = ARTICLES
+      .filter(a => a !== article && a.title !== article.title && a.category === article.category)
+      .filter(a => !scored.find(s => s.article === a));
+    scored.push(...sameCat.slice(0, count - scored.length).map(a => ({ article: a, score: 1 })));
+  }
+
+  return scored.map(s => s.article);
+}
+
+function renderRelated(article) {
+  const related = findRelatedArticles(article);
+  const list = document.getElementById('relatedList');
+  if (related.length === 0) {
+    document.getElementById('detailRelated').style.display = 'none';
+    return;
+  }
+  document.getElementById('detailRelated').style.display = 'block';
+  list.innerHTML = related.map(a => {
+    const badgeClass = a.category === '行业新闻' ? 'badge-news' : a.category === '技术文章' ? 'badge-tech' : 'badge-mfr';
+    const iconEmoji = a.category === '行业新闻' ? '📰' : a.category === '技术文章' ? '🔧' : '🏭';
+    return `<div class="related-item" data-global="${ARTICLES.indexOf(a)}">
+      <div class="related-item-left">
+        <span class="related-item-icon">${iconEmoji}</span>
+        <span class="related-item-text">${escapeHTML(a.title)}</span>
+      </div>
+      <span class="article-badge ${badgeClass} related-item-badge">${a.category}</span>
+    </div>`;
+  }).join('');
+
+  // Click handlers for related items
+  list.querySelectorAll('.related-item').forEach(el => {
+    el.addEventListener('click', () => {
+      const idx = parseInt(el.dataset.global);
+      if (!isNaN(idx) && ARTICLES[idx]) {
+        hideDetail();
+        // Small delay for modal close animation, then show new detail
+        setTimeout(() => showDetail(ARTICLES[idx]), 200);
+      }
+    });
+  });
+}
 
 // ====== UTILS ======
 function escapeHTML(str) {
