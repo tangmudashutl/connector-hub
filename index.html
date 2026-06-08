@@ -1,0 +1,233 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>ConnectorHUG - 连接器行业社区</title>
+<link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- 顶部导航 -->
+<header class="header">
+  <div class="header-inner">
+    <div class="logo">
+      <span class="logo-icon">⬡</span>
+      <span class="logo-text">Connector<strong>HUG</strong></span>
+    </div>
+    <nav class="nav" id="mainNav">
+      <a href="#news" class="nav-link active">行业新闻</a>
+      <a href="#rd" class="nav-link">产品研发</a>
+      <a href="#tech" class="nav-link">技术文章</a>
+      <a href="#expo" class="nav-link">展会信息</a>
+      <a href="#biz" class="nav-link">经营事件</a>
+      <a href="#contact" class="nav-link">商务接口</a>
+    </nav>
+    <div class="header-actions">
+      <input type="text" class="search-box" placeholder="搜索…">
+      <button class="btn btn-primary" onclick="showModal('submitModal')">+ 投稿</button>
+    </div>
+    <button class="mobile-menu-btn" onclick="toggleMobileMenu()">☰</button>
+  </div>
+</header>
+
+<!-- 移动端菜单 -->
+<div class="mobile-menu" id="mobileMenu">
+  <a href="#news" onclick="closeMobileMenu()">行业新闻</a>
+  <a href="#rd" onclick="closeMobileMenu()">产品研发</a>
+  <a href="#tech" onclick="closeMobileMenu()">技术文章</a>
+  <a href="#expo" onclick="closeMobileMenu()">展会信息</a>
+  <a href="#biz" onclick="closeMobileMenu()">经营事件</a>
+  <a href="#contact" onclick="closeMobileMenu()">商务接口</a>
+</div>
+
+<!-- Hero -->
+<section class="hero">
+  <div class="container">
+    <h1>连接器行业 <span class="highlight">HUG 社区</span></h1>
+    <p class="hero-desc">汇聚行业动态、技术洞察与商业机会，连接每一个连接器人。</p>
+    <div class="hero-stats">
+      <div class="stat"><span class="stat-num" data-target="1286">0</span><span class="stat-label">行业资讯</span></div>
+      <div class="stat"><span class="stat-num" data-target="342">0</span><span class="stat-label">技术文章</span></div>
+      <div class="stat"><span class="stat-num" data-target="89">0</span><span class="stat-label">社区成员</span></div>
+    </div>
+  </div>
+</section>
+
+<!-- 行业新闻 -->
+<section class="section" id="news">
+  <div class="container">
+    <div class="section-header">
+      <h2>📰 行业新闻</h2>
+      <a href="#" class="link-more">查看全部 →</a>
+    </div>
+    <div class="card-grid" id="newsGrid">
+      <!-- JS 动态填充 -->
+    </div>
+  </div>
+</section>
+
+<!-- 产品研发 -->
+<section class="section alt-bg" id="rd">
+  <div class="container">
+    <div class="section-header">
+      <h2>🔬 产品研发</h2>
+      <a href="#" class="link-more">查看全部 →</a>
+    </div>
+    <div class="card-grid" id="rdGrid"></div>
+  </div>
+</section>
+
+<!-- 技术文章 -->
+<section class="section" id="tech">
+  <div class="container">
+    <div class="section-header">
+      <h2>📐 技术文章</h2>
+      <a href="#" class="link-more">查看全部 →</a>
+    </div>
+    <div class="card-list" id="techList"></div>
+  </div>
+</section>
+
+<!-- 展会信息 -->
+<section class="section alt-bg" id="expo">
+  <div class="container">
+    <div class="section-header">
+      <h2>📅 展会信息</h2>
+      <a href="#" class="link-more">查看全部 →</a>
+    </div>
+    <div class="expo-timeline" id="expoTimeline"></div>
+  </div>
+</section>
+
+<!-- 经营事件 -->
+<section class="section" id="biz">
+  <div class="container">
+    <div class="section-header">
+      <h2>📊 经营事件</h2>
+      <a href="#" class="link-more">查看全部 →</a>
+    </div>
+    <div class="card-grid" id="bizGrid"></div>
+  </div>
+</section>
+
+<!-- 商务接口 -->
+<section class="section alt-bg" id="contact">
+  <div class="container">
+    <div class="section-header">
+      <h2>🤝 商务接口</h2>
+    </div>
+    <div class="contact-grid">
+      <div class="contact-card">
+        <div class="contact-avatar">🧑💼</div>
+        <h3>采购对接</h3>
+        <p>连接器原材料、零部件采购信息</p>
+        <button class="btn btn-outline" onclick="showModal('contactModal','采购')">联系我们</button>
+      </div>
+      <div class="contact-card">
+        <div class="contact-avatar">🏭</div>
+        <h3>产能合作</h3>
+        <p>OEM/ODM 代工、产能共享</p>
+        <button class="btn btn-outline" onclick="showModal('contactModal','产能')">联系我们</button>
+      </div>
+      <div class="contact-card">
+        <div class="contact-avatar">🔬</div>
+        <h3>技术合作</h3>
+        <p>联合研发、技术授权、专利交易</p>
+        <button class="btn btn-outline" onclick="showModal('contactModal','技术')">联系我们</button>
+      </div>
+      <div class="contact-card">
+        <div class="contact-avatar">💼</div>
+        <h3>投融资对接</h3>
+        <p>项目融资、并购信息、投资人对接</p>
+        <button class="btn btn-outline" onclick="showModal('contactModal','投融资')">联系我们</button>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- 页脚 -->
+<footer class="footer">
+  <div class="container footer-inner">
+    <div class="footer-brand">
+      <span class="logo-icon">⬡</span> ConnectorHUG
+      <p class="footer-desc">连接器人的行业社区，每周更新全球连接器产业动态。</p>
+    </div>
+    <div class="footer-links">
+      <h4>栏目</h4>
+      <a href="#news">行业新闻</a>
+      <a href="#rd">产品研发</a>
+      <a href="#tech">技术文章</a>
+      <a href="#expo">展会信息</a>
+    </div>
+    <div class="footer-links">
+      <h4>关于</h4>
+      <a href="#">关于HUG</a>
+      <a href="#">投稿须知</a>
+      <a href="#">联系方式</a>
+      <a href="#">隐私政策</a>
+    </div>
+  </div>
+  <div class="footer-bottom">© 2026 ConnectorHUG. All rights reserved.</div>
+</footer>
+
+<!-- 投稿弹窗 -->
+<div class="modal-overlay" id="submitModal">
+  <div class="modal">
+    <div class="modal-header">
+      <h3>📝 投稿 / 提交信息</h3>
+      <button class="modal-close" onclick="hideModal('submitModal')">×</button>
+    </div>
+    <div class="modal-body">
+      <label>类型</label>
+      <select id="submitType">
+        <option value="news">行业新闻</option>
+        <option value="rd">产品研发</option>
+        <option value="tech">技术文章</option>
+        <option value="expo">展会信息</option>
+        <option value="biz">经营事件</option>
+      </select>
+      <label>标题</label>
+      <input type="text" id="submitTitle" placeholder="请输入标题">
+      <label>内容摘要</label>
+      <textarea id="submitContent" rows="4" placeholder="请输入内容摘要…"></textarea>
+      <label>联系人 / 公司</label>
+      <input type="text" id="submitContact" placeholder="选填">
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="hideModal('submitModal')">取消</button>
+      <button class="btn btn-primary" onclick="submitForm()">提交</button>
+    </div>
+  </div>
+</div>
+
+<!-- 联系弹窗 -->
+<div class="modal-overlay" id="contactModal">
+  <div class="modal modal-sm">
+    <div class="modal-header">
+      <h3 id="contactModalTitle">🤝 商务对接</h3>
+      <button class="modal-close" onclick="hideModal('contactModal')">×</button>
+    </div>
+    <div class="modal-body">
+      <label>姓名</label>
+      <input type="text" id="contactName" placeholder="您的姓名">
+      <label>公司</label>
+      <input type="text" id="contactCompany" placeholder="公司名称">
+      <label>邮箱</label>
+      <input type="email" id="contactEmail" placeholder="your@email.com">
+      <label>需求描述</label>
+      <textarea id="contactDesc" rows="3" placeholder="请描述您的需求…"></textarea>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-ghost" onclick="hideModal('contactModal')">取消</button>
+      <button class="btn btn-primary" onclick="submitContactForm()">发送</button>
+    </div>
+  </div>
+</div>
+
+<!-- Toast -->
+<div class="toast" id="toast"></div>
+
+<script src="app.js"></script>
+</body>
+</html>
