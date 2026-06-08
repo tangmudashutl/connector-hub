@@ -20,6 +20,34 @@
   </div>
 </header>
 
+<!-- Hero Section -->
+<div class="hero">
+  <div class="hero-inner">
+    <div class="hero-badge">BETA</div>
+    <h1 class="hero-title">全球连接器行业知识库</h1>
+    <p class="hero-subtitle">实时追踪连接器行业动态，聚合全球一手资讯、技术解析与厂家档案</p>
+    <div class="hero-stats">
+      <div class="hero-stat">
+        <span class="hero-stat-num" id="heroTotal">208</span>
+        <span class="hero-stat-label">篇专业文章</span>
+      </div>
+      <div class="hero-stat">
+        <span class="hero-stat-num" id="heroNews">--</span>
+        <span class="hero-stat-label">行业新闻</span>
+      </div>
+      <div class="hero-stat">
+        <span class="hero-stat-num" id="heroMfr">--</span>
+        <span class="hero-stat-label">厂家档案</span>
+      </div>
+    </div>
+    <div class="hero-search">
+      <span class="hero-search-icon">🔍</span>
+      <input type="text" id="heroSearchInput" placeholder="搜索连接器资讯、技术文档、厂家信息..." autocomplete="off">
+    </div>
+  </div>
+  <div class="hero-particles"></div>
+</div>
+
 <div class="container">
   <!-- Breadcrumb -->
   <nav class="breadcrumb" id="breadcrumb">
@@ -53,6 +81,15 @@
       <button class="qfilter" data-range="month">本月</button>
       <button class="qfilter" data-range="3month">近3月</button>
     </div>
+  </div>
+
+  <!-- Content Type Sub-filters -->
+  <div class="subfilter-bar" id="subfilterBar">
+    <span class="subfilter-label">内容类型：</span>
+    <button class="subfilter active" data-subfilter="all">全部</button>
+    <button class="subfilter" data-subfilter="行业新闻"><span class="sf-dot dot-news"></span>行业新闻</button>
+    <button class="subfilter" data-subfilter="技术文章"><span class="sf-dot dot-tech"></span>技术文章</button>
+    <button class="subfilter" data-subfilter="厂家档案"><span class="sf-dot dot-mfr"></span>厂家档案</button>
   </div>
 
   <!-- Article Grid -->

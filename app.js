@@ -5,6 +5,7 @@ let currentCat = 'all';
 let currentPage = 1;
 let searchQuery = '';
 let selectedWeek = 'all';
+let subFilter = 'all'; // content type sub-filter
 let ARTICLES = [];
 let WEEK_MAP = {}; // week_key -> { label, mondayDate, articles }
 
@@ -125,12 +126,15 @@ function init() {
   }
   buildWeekDropdown();
   updateNavCounts();
+  updateHeroStats();
   setupNav();
   setupSearch();
+  setupHeroSearch();
   setupWeekFilter();
   setupQuickFilters();
   setupBreadcrumb();
   setupBackToTop();
+  setupSubFilters();
   render();
 }
 
@@ -145,6 +149,53 @@ function updateNavCounts() {
   });
 }
 
+// ====== HERO STATS ======
+function updateHeroStats() {
+  const newsCount = ARTICLES.filter(a => a.category === '行业新闻').length;
+  const techCount = ARTICLES.filter(a => a.category === '技术文章').length;
+  const mfrCount = ARTICLES.filter(a => a.category === '厂家档案').length;
+  document.getElementById('heroTotal').textContent = ARTICLES.length;
+  document.getElementById('heroNews').textContent = newsCount;
+  document.getElementById('heroMfr').textContent = mfrCount;
+}
+
+// ====== HERO SEARCH ======
+function setupHeroSearch() {
+  const heroInput = document.getElementById('heroSearchInput');
+  const mainInput = document.getElementById('searchInput');
+  let debounceTimer;
+
+  heroInput.addEventListener('input', () => {
+    clearTimeout(debounceTimer);
+    debounceTimer = setTimeout(() => {
+      const q = heroInput.value.trim();
+      searchQuery = q;
+      mainInput.value = q;
+      document.getElementById('searchClear').style.display = q ? 'block' : 'none';
+      currentPage = 1;
+      render();
+    }, 300);
+  });
+
+  // Sync main search input back to hero
+  mainInput.addEventListener('input', () => {
+    heroInput.value = mainInput.value;
+  });
+}
+
+// ====== SUB-FILTERS ======
+function setupSubFilters() {
+  document.querySelectorAll('.subfilter').forEach(btn => {
+    btn.addEventListener('click', () => {
+      document.querySelectorAll('.subfilter').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      subFilter = btn.dataset.subfilter;
+      currentPage = 1;
+      render();
+    });
+  });
+}
+
 // ====== NAVIGATION ======
 function setupNav() {
   document.querySelectorAll('.nav-link').forEach(btn => {
@@ -153,6 +204,10 @@ function setupNav() {
       btn.classList.add('active');
       currentCat = btn.dataset.cat;
       currentPage = 1;
+      // Reset sub-filter when main nav changes
+      subFilter = 'all';
+      document.querySelectorAll('.subfilter').forEach(b => b.classList.remove('active'));
+      document.querySelector('.subfilter[data-subfilter="all"]').classList.add('active');
       updateBreadcrumb();
       render();
     });
@@ -193,6 +248,9 @@ function setupBreadcrumb() {
     document.querySelector('.nav-link[data-cat="all"]').classList.add('active');
     currentCat = 'all';
     currentPage = 1;
+    subFilter = 'all';
+    document.querySelectorAll('.subfilter').forEach(b => b.classList.remove('active'));
+    document.querySelector('.subfilter[data-subfilter="all"]').classList.add('active');
     updateBreadcrumb();
     render();
   });
@@ -288,6 +346,11 @@ function getFiltered() {
   // Category
   if (currentCat !== 'all') {
     articles = articles.filter(a => a.category === currentCat);
+  }
+
+  // Sub-filter (content type) - works on top of category
+  if (subFilter !== 'all') {
+    articles = articles.filter(a => a.category === subFilter);
   }
 
   // Week filter (from dropdown)
@@ -392,14 +455,20 @@ function render() {
 
 function cardHTML(a) {
   const badgeClass = a.category === '行业新闻' ? 'badge-news' : a.category === '技术文章' ? 'badge-tech' : 'badge-mfr';
+  const cardClass = a.category === '行业新闻' ? 'card-news' : a.category === '技术文章' ? 'card-tech' : 'card-mfr';
+  const iconClass = a.category === '行业新闻' ? 'icon-news' : a.category === '技术文章' ? 'icon-tech' : 'icon-mfr';
+  const iconEmoji = a.category === '行业新闻' ? '📰' : a.category === '技术文章' ? '🔧' : '🏭';
   const impClass = (a.importance || '').includes('高') ? 'imp-high' : (a.importance || '').includes('中') ? 'imp-mid' : '';
   const keywords = (a.keywords || '').split(',').filter(Boolean).slice(0, 4);
 
   return `
-    <div class="article-card">
-      <div class="card-header">
-        <span class="article-badge ${badgeClass}">${a.category}</span>
-        <span class="article-date-card">${a.date || ''}</span>
+    <div class="article-card ${cardClass}">
+      <div class="card-icon-row">
+        <span class="card-icon ${iconClass}">${iconEmoji}</span>
+        <div>
+          <span class="article-badge ${badgeClass}">${a.category}</span>
+        </div>
+        <span class="article-date-card" style="margin-left:auto">${a.date || ''}</span>
       </div>
       <h3 class="card-title">${escapeHTML(a.title)}</h3>
       ${a.source ? `<div class="card-source">📰 ${escapeHTML(a.source)}</div>` : ''}
