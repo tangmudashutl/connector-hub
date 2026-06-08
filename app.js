@@ -124,11 +124,25 @@ function init() {
     return;
   }
   buildWeekDropdown();
+  updateNavCounts();
   setupNav();
   setupSearch();
   setupWeekFilter();
   setupQuickFilters();
+  setupBreadcrumb();
+  setupBackToTop();
   render();
+}
+
+// ====== NAV COUNTS ======
+function updateNavCounts() {
+  const cats = { all: ARTICLES.length, '行业新闻': 0, '技术文章': 0, '厂家档案': 0 };
+  ARTICLES.forEach(a => { if (cats[a.category] !== undefined) cats[a.category]++; });
+  document.querySelectorAll('.nav-link').forEach(btn => {
+    const cat = btn.dataset.cat;
+    const html = btn.textContent.replace(/\(\d+\)/, '').trim();
+    btn.innerHTML = `${html} <span class="nav-count">(${cats[cat]})</span>`;
+  });
 }
 
 // ====== NAVIGATION ======
@@ -139,6 +153,7 @@ function setupNav() {
       btn.classList.add('active');
       currentCat = btn.dataset.cat;
       currentPage = 1;
+      updateBreadcrumb();
       render();
     });
   });
@@ -169,7 +184,52 @@ function setupSearch() {
   });
 }
 
-// ====== WEEK FILTER (DROPDOWN) ======
+// ====== BREADCRUMB ======
+function setupBreadcrumb() {
+  // Home link always resets
+  document.querySelector('.breadcrumb-link').addEventListener('click', (e) => {
+    e.preventDefault();
+    document.querySelectorAll('.nav-link').forEach(b => b.classList.remove('active'));
+    document.querySelector('.nav-link[data-cat="all"]').classList.add('active');
+    currentCat = 'all';
+    currentPage = 1;
+    updateBreadcrumb();
+    render();
+  });
+}
+
+function updateBreadcrumb() {
+  const current = document.getElementById('breadcrumbCurrent');
+  if (currentCat === 'all') {
+    current.textContent = '全部文章';
+  } else {
+    current.textContent = currentCat;
+  }
+}
+
+// ====== BACK TO TOP ======
+function setupBackToTop() {
+  const btn = document.getElementById('backToTop');
+  let ticking = false;
+
+  window.addEventListener('scroll', () => {
+    if (!ticking) {
+      requestAnimationFrame(() => {
+        if (window.scrollY > 400) {
+          btn.classList.add('visible');
+        } else {
+          btn.classList.remove('visible');
+        }
+        ticking = false;
+      });
+      ticking = true;
+    }
+  });
+
+  btn.addEventListener('click', () => {
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+}
 function setupWeekFilter() {
   const select = document.getElementById('weekSelect');
   select.addEventListener('change', () => {
@@ -297,6 +357,17 @@ function render() {
   } else {
     statRange.textContent = '';
   }
+
+  // Category distribution dots
+  const statDots = document.getElementById('statDots');
+  const newsCount = articles.filter(a => a.category === '行业新闻').length;
+  const techCount = articles.filter(a => a.category === '技术文章').length;
+  const mfrCount = articles.filter(a => a.category === '厂家档案').length;
+  statDots.innerHTML = `
+    <span class="stat-dot dot-news">新闻 ${newsCount}</span>
+    <span class="stat-dot dot-tech">技术 ${techCount}</span>
+    <span class="stat-dot dot-mfr">厂商 ${mfrCount}</span>
+  `;
 
   // Grid
   const grid = document.getElementById('articleGrid');

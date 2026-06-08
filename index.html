@@ -21,11 +21,20 @@
 </header>
 
 <div class="container">
+  <!-- Breadcrumb -->
+  <nav class="breadcrumb" id="breadcrumb">
+    <a href="#" class="breadcrumb-link" data-cat="all">首页</a>
+    <span class="breadcrumb-sep">›</span>
+    <span class="breadcrumb-current" id="breadcrumbCurrent">全部文章</span>
+  </nav>
+
   <!-- Stats bar -->
   <div class="stats-bar" id="statsBar">
     <span class="stat-item" id="statCount">加载中...</span>
     <span class="stat-sep">|</span>
     <span class="stat-item" id="statRange"></span>
+    <span class="stat-sep">|</span>
+    <span class="stat-item stat-dots" id="statDots"></span>
   </div>
 
   <!-- Search & Filter -->
@@ -94,5 +103,6 @@
 <script src="data_技术文章.js"></script>
 <script src="data_厂家档案.js"></script>
 <script src="app.js"></script>
+<button class="back-to-top" id="backToTop" title="返回顶部">↑</button>
 </body>
 </html>
