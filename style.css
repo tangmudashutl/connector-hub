@@ -93,14 +93,25 @@ body {
   background: none; border: none; color: var(--text-dim); cursor: pointer;
   font-size: 16px; padding: 4px;
 }
-.date-filters { display: flex; align-items: center; gap: 8px; }
-.date-filters input[type="date"] {
-  padding: 10px 12px; background: var(--bg-input); color: var(--text);
+.week-selector { position: relative; min-width: 220px; }
+.week-selector select {
+  width: 100%; padding: 10px 32px 10px 14px;
+  background: var(--bg-input); color: var(--text);
   border: 1px solid var(--border); border-radius: var(--radius-sm);
   font-size: 13px; font-family: var(--font); outline: none;
+  cursor: pointer; appearance: none; -webkit-appearance: none;
+  transition: border-color 0.2s;
 }
-.date-filters input[type="date"]:focus { border-color: var(--primary); }
-.date-sep { color: var(--text-dim); font-size: 13px; }
+.week-selector select:focus { border-color: var(--primary); }
+.week-selector select option {
+  background: var(--bg-card); color: var(--text);
+  padding: 8px 12px;
+}
+.week-selector::after {
+  content: '▾'; position: absolute; right: 12px; top: 50%;
+  transform: translateY(-50%); color: var(--text-dim);
+  font-size: 12px; pointer-events: none;
+}
 .quick-filters { display: flex; gap: 4px; }
 .qfilter {
   background: none; border: 1px solid var(--border); cursor: pointer;
@@ -210,8 +221,7 @@ body {
   .nav-link { font-size: 12px; padding: 4px 10px; white-space: nowrap; }
   .toolbar { flex-direction: column; gap: 8px; }
   .search-box { max-width: none; width: 100%; }
-  .date-filters { width: 100%; }
-  .date-filters input { flex: 1; }
+  .week-selector { width: 100%; }
   .quick-filters { width: 100%; overflow-x: auto; }
   .article-grid { grid-template-columns: 1fr; }
   .modal { width: 96%; max-height: 90vh; }

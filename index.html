@@ -34,13 +34,12 @@
       <input type="text" id="searchInput" placeholder="搜索关键词..." autocomplete="off">
       <button id="searchClear" class="search-clear" style="display:none">✕</button>
     </div>
-    <div class="date-filters">
-      <input type="date" id="dateFrom" title="开始日期">
-      <span class="date-sep">至</span>
-      <input type="date" id="dateTo" title="结束日期">
+    <div class="week-selector">
+      <select id="weekSelect">
+        <option value="all">全部时间</option>
+      </select>
     </div>
     <div class="quick-filters">
-      <button class="qfilter active" data-range="all">全部时间</button>
       <button class="qfilter" data-range="week">本周</button>
       <button class="qfilter" data-range="month">本月</button>
       <button class="qfilter" data-range="3month">近3月</button>

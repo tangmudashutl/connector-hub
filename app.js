@@ -4,9 +4,9 @@ const PER_PAGE = 24;
 let currentCat = 'all';
 let currentPage = 1;
 let searchQuery = '';
-let dateFrom = '';
-let dateTo = '';
+let selectedWeek = 'all';
 let ARTICLES = [];
+let WEEK_MAP = {}; // week_key -> { label, mondayDate, articles }
 
 // Merge all data sources
 function loadData() {
@@ -18,6 +18,104 @@ function loadData() {
   return parts;
 }
 
+// ====== WEEK / DATE HELPERS ======
+
+function parseArticleDate(article) {
+  // Try to extract a usable date from various fields
+  const candidates = [];
+
+  // 1. From date field: YYYY-MM-DD
+  const dm1 = (article.date || '').match(/(\d{4})-(\d{2})-(\d{2})/);
+  if (dm1) candidates.push(new Date(+dm1[1], +dm1[2] - 1, +dm1[3]));
+
+  // 2. From date field: YYYY年M月D日
+  const dm2 = (article.date || '').match(/(\d{4})年(\d{1,2})月(\d{1,2})日/);
+  if (!candidates.length && dm2) candidates.push(new Date(+dm2[1], +dm2[2] - 1, +dm2[3]));
+
+  // 3. From week_range: extract start date
+  const wr = (article.week_range || '');
+  const wm1 = wr.match(/(\d{4})-(\d{2})-(\d{2})/);
+  if (!candidates.length && wm1) candidates.push(new Date(+wm1[1], +wm1[2] - 1, +wm1[3]));
+  const wm2 = wr.match(/(\d{4})年(\d{1,2})月(\d{1,2})日/);
+  if (!candidates.length && wm2) candidates.push(new Date(+wm2[1], +wm2[2] - 1, +wm2[3]));
+
+  // 4. From id field: news_2026-04-27_N
+  const im = (article.id || '').match(/(\d{4})-(\d{2})-(\d{2})/);
+  if (!candidates.length && im) candidates.push(new Date(+im[1], +im[2] - 1, +im[3]));
+
+  return candidates.length ? candidates[0] : null;
+}
+
+function getISOWeek(d) {
+  // Returns { key: '2026-W23', label: '06/02 ~ 06/08 (第23周)', monday: Date }
+  const day = d.getDay() || 7; // Sunday = 7
+  const monday = new Date(d);
+  monday.setDate(d.getDate() - day + 1);
+  monday.setHours(0, 0, 0, 0);
+  const sunday = new Date(monday);
+  sunday.setDate(monday.getDate() + 6);
+
+  // ISO week number
+  const jan1 = new Date(monday.getFullYear(), 0, 1);
+  const jan1Day = jan1.getDay() || 7;
+  const daysDiff = (monday - jan1) / 86400000;
+  const weekNum = Math.ceil((daysDiff + jan1Day) / 7);
+
+  const key = `${monday.getFullYear()}-W${String(weekNum).padStart(2, '0')}`;
+  const label = `${fmtShort(monday)} ~ ${fmtShort(sunday)}（第${weekNum}周）`;
+  return { key, label, monday };
+}
+
+function fmtShort(d) {
+  return `${d.getMonth() + 1}/${d.getDate()}`;
+}
+
+function fmtDate(d) {
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, '0');
+  const day = String(d.getDate()).padStart(2, '0');
+  return `${y}-${m}-${day}`;
+}
+
+// ====== BUILD WEEK DROPDOWN ======
+
+function buildWeekDropdown() {
+  WEEK_MAP = {};
+
+  ARTICLES.forEach((article, idx) => {
+    const d = parseArticleDate(article);
+    if (d && !isNaN(d.getTime())) {
+      const wk = getISOWeek(d);
+      if (!WEEK_MAP[wk.key]) {
+        WEEK_MAP[wk.key] = { label: wk.label, monday: wk.monday, articles: [] };
+      }
+      WEEK_MAP[wk.key].articles.push(idx);
+    }
+    // Store week_key on article for filtering
+    article._weekKey = d ? getISOWeek(d).key : '';
+  });
+
+  // Build dropdown
+  const select = document.getElementById('weekSelect');
+  // Sort weeks newest first
+  const sortedWeeks = Object.values(WEEK_MAP).sort((a, b) => b.monday - a.monday);
+
+  // Keep "全部时间" option, add week options
+  select.innerHTML = '<option value="all">全部时间</option>';
+  sortedWeeks.forEach((wk, i) => {
+    const opt = document.createElement('option');
+    opt.value = wk.label.split('~')[0].trim(); // use monday string as value
+    // Store the week key for lookup
+    const weekKey = Object.keys(WEEK_MAP).find(k => WEEK_MAP[k].monday.getTime() === wk.monday.getTime());
+    opt.value = weekKey;
+    opt.textContent = wk.label;
+    select.appendChild(opt);
+  });
+
+  // Default to "全部时间"
+  select.value = 'all';
+}
+
 // ====== INIT ======
 function init() {
   ARTICLES = loadData();
@@ -25,9 +123,10 @@ function init() {
     document.getElementById('articleGrid').innerHTML = '<div class="loading">数据加载失败，请刷新页面</div>';
     return;
   }
+  buildWeekDropdown();
   setupNav();
   setupSearch();
-  setupDateFilters();
+  setupWeekFilter();
   setupQuickFilters();
   render();
 }
@@ -70,21 +169,15 @@ function setupSearch() {
   });
 }
 
-// ====== DATE FILTERS ======
-function setupDateFilters() {
-  const fromEl = document.getElementById('dateFrom');
-  const toEl = document.getElementById('dateTo');
-
-  fromEl.addEventListener('change', () => {
-    dateFrom = fromEl.value;
-    document.querySelectorAll('.qfilter').forEach(b => b.classList.remove('active'));
-    currentPage = 1;
-    render();
-  });
-
-  toEl.addEventListener('change', () => {
-    dateTo = toEl.value;
-    document.querySelectorAll('.qfilter').forEach(b => b.classList.remove('active'));
+// ====== WEEK FILTER (DROPDOWN) ======
+function setupWeekFilter() {
+  const select = document.getElementById('weekSelect');
+  select.addEventListener('change', () => {
+    selectedWeek = select.value;
+    // Clear quick filter active states when manually selecting a week
+    if (selectedWeek !== 'all') {
+      document.querySelectorAll('.qfilter').forEach(b => b.classList.remove('active'));
+    }
     currentPage = 1;
     render();
   });
@@ -96,52 +189,36 @@ function setupQuickFilters() {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.qfilter').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
-      const range = btn.dataset.range;
-      applyQuickFilter(range);
+      applyQuickFilter(btn.dataset.range);
     });
   });
 }
 
 function applyQuickFilter(range) {
+  const select = document.getElementById('weekSelect');
   const now = new Date();
-  const fromEl = document.getElementById('dateFrom');
-  const toEl = document.getElementById('dateTo');
 
   switch (range) {
     case 'week': {
-      const day = now.getDay() || 7;
-      const monday = new Date(now);
-      monday.setDate(now.getDate() - day + 1);
-      fromEl.value = fmtDate(monday);
-      toEl.value = fmtDate(now);
+      const wk = getISOWeek(now);
+      if (WEEK_MAP[wk.key]) {
+        select.value = wk.key;
+      } else {
+        select.value = 'all';
+      }
       break;
     }
     case 'month':
-      fromEl.value = fmtDate(new Date(now.getFullYear(), now.getMonth(), 1));
-      toEl.value = fmtDate(now);
+      select.value = 'all';
+      // Fall through to custom month logic in getFiltered
       break;
-    case '3month': {
-      const d = new Date(now);
-      d.setMonth(d.getMonth() - 3);
-      fromEl.value = fmtDate(d);
-      toEl.value = fmtDate(now);
+    case '3month':
+      select.value = 'all';
       break;
-    }
-    default:
-      fromEl.value = '';
-      toEl.value = '';
   }
-  dateFrom = fromEl.value;
-  dateTo = toEl.value;
+  selectedWeek = select.value;
   currentPage = 1;
   render();
-}
-
-function fmtDate(d) {
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, '0');
-  const day = String(d.getDate()).padStart(2, '0');
-  return `${y}-${m}-${day}`;
 }
 
 // ====== FILTERING ======
@@ -153,12 +230,31 @@ function getFiltered() {
     articles = articles.filter(a => a.category === currentCat);
   }
 
-  // Date range
-  if (dateFrom) {
-    articles = articles.filter(a => a.date >= dateFrom);
+  // Week filter (from dropdown)
+  if (selectedWeek !== 'all') {
+    articles = articles.filter(a => a._weekKey === selectedWeek);
   }
-  if (dateTo) {
-    articles = articles.filter(a => a.date <= dateTo);
+
+  // Quick filters: 本月 / 近3月
+  const activeQFilter = document.querySelector('.qfilter.active');
+  if (activeQFilter) {
+    const range = activeQFilter.dataset.range;
+    const now = new Date();
+    if (range === 'month') {
+      const monthStart = fmtDate(new Date(now.getFullYear(), now.getMonth(), 1));
+      articles = articles.filter(a => {
+        const d = parseArticleDate(a);
+        return d && fmtDate(d) >= monthStart;
+      });
+    } else if (range === '3month') {
+      const d3 = new Date(now);
+      d3.setMonth(d3.getMonth() - 3);
+      const cutoff = fmtDate(d3);
+      articles = articles.filter(a => {
+        const d = parseArticleDate(a);
+        return d && fmtDate(d) >= cutoff;
+      });
+    }
   }
 
   // Keyword search
@@ -184,13 +280,22 @@ function render() {
   const start = (currentPage - 1) * PER_PAGE;
   const pageArticles = filtered.slice(start, start + PER_PAGE);
 
-  // Stats
-  document.getElementById('statCount').textContent = `共 ${total} 篇文章`;
-  const dates = filtered.map(a => a.date).filter(Boolean).sort();
-  if (dates.length) {
-    document.getElementById('statRange').textContent = `${dates[dates.length-1]} ~ ${dates[0]}`;
+  // Stats - show week label if a week is selected
+  const statCount = document.getElementById('statCount');
+  if (selectedWeek !== 'all' && WEEK_MAP[selectedWeek]) {
+    statCount.innerHTML = `共 ${total} 篇文章 · <span style="color:var(--primary)">${WEEK_MAP[selectedWeek].label}</span>`;
   } else {
-    document.getElementById('statRange').textContent = '';
+    statCount.textContent = `共 ${total} 篇文章`;
+  }
+
+  const statRange = document.getElementById('statRange');
+  const dates = filtered.map(a => parseArticleDate(a)).filter(d => d && !isNaN(d.getTime())).sort((a, b) => b - a);
+  if (dates.length >= 2) {
+    statRange.textContent = `${fmtDate(dates[dates.length - 1])} ~ ${fmtDate(dates[0])}`;
+  } else if (dates.length === 1) {
+    statRange.textContent = fmtDate(dates[0]);
+  } else {
+    statRange.textContent = '';
   }
 
   // Grid
@@ -245,7 +350,6 @@ function renderPagination(totalPages, total) {
 
   let html = `<button class="page-btn" ${currentPage === 1 ? 'disabled' : ''} data-page="${currentPage - 1}">上一页</button>`;
 
-  // Show page numbers
   const maxShow = 7;
   let startPage = Math.max(1, currentPage - Math.floor(maxShow / 2));
   let endPage = Math.min(totalPages, startPage + maxShow - 1);
@@ -262,7 +366,6 @@ function renderPagination(totalPages, total) {
 
   pg.innerHTML = html;
 
-  // Click handlers
   pg.querySelectorAll('.page-btn:not([disabled])').forEach(btn => {
     btn.addEventListener('click', () => {
       const p = parseInt(btn.dataset.page);
