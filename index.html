@@ -1,5 +1,5 @@
 <!DOCTYPE html>
-<html lang="zh-CN">
+<html lang="zh-CN" data-theme="dark">
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -41,7 +41,12 @@
       <button class="nav-link" data-cat="行业新闻">行业新闻</button>
       <button class="nav-link" data-cat="技术文章">技术文章</button>
       <button class="nav-link" data-cat="厂家档案">厂家档案</button>
+      <button class="nav-link-fav" id="navFav" data-cat="fav">⭐ 收藏</button>
     </nav>
+    <button class="theme-toggle" id="themeToggle" title="切换主题">
+      <span class="icon-moon">🌙</span>
+      <span class="icon-sun">☀️</span>
+    </button>
   </div>
 </header>
 
@@ -130,6 +135,7 @@
       <button class="subfilter" data-subfilter="行业新闻"><span class="sf-dot dot-news"></span>行业新闻</button>
       <button class="subfilter" data-subfilter="技术文章"><span class="sf-dot dot-tech"></span>技术文章</button>
       <button class="subfilter" data-subfilter="厂家档案"><span class="sf-dot dot-mfr"></span>厂家档案</button>
+      <button class="subfilter-fav" id="subfilterFav" data-subfilter="fav">⭐ 仅收藏</button>
     </div>
 
     <!-- Article Grid -->
@@ -160,6 +166,10 @@
       <h3 class="sidebar-title">🕐 最近更新</h3>
       <div class="sidebar-loading">加载中...</div>
     </div>
+    <div class="sidebar-panel" id="sidebarTags">
+      <h3 class="sidebar-title">🏷️ 标签云</h3>
+      <div class="sidebar-loading">加载中...</div>
+    </div>
     <div class="sidebar-panel sidebar-newsletter" id="sidebarNewsletter">
       <h3 class="sidebar-title">📬 行业周报订阅</h3>
       <p class="newsletter-desc">每周一早10点，自动推送连接器行业最新动态</p>
@@ -179,8 +189,12 @@
       <div>
         <span class="article-badge" id="detailBadge"></span>
         <span class="article-date" id="detailDate"></span>
+        <span class="reading-time" id="detailReadingTime"></span>
       </div>
-      <button class="modal-close" id="detailClose">×</button>
+      <div style="display:flex;align-items:center;gap:8px;">
+        <button class="detail-fav-btn" id="detailFavBtn">⭐ 收藏</button>
+        <button class="modal-close" id="detailClose">×</button>
+      </div>
     </div>
     <div class="modal-body">
       <h2 class="article-title" id="detailTitle"></h2>

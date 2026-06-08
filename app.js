@@ -1,4 +1,4 @@
-// ConnectorHUB - Article Directory App
+// ConnectorHUB - Article Directory App (Phase 5 - Advanced Features)
 
 const PER_PAGE = 24;
 let currentCat = 'all';
@@ -6,8 +6,138 @@ let currentPage = 1;
 let searchQuery = '';
 let selectedWeek = 'all';
 let subFilter = 'all'; // content type sub-filter
+let showFavOnly = false; // favorites filter
+let activeTag = ''; // active tag from tag cloud
 let ARTICLES = [];
 let WEEK_MAP = {}; // week_key -> { label, mondayDate, articles }
+let FAVORITES = new Set(); // favorite article IDs
+
+// ====== THEME MANAGEMENT ======
+function initTheme() {
+  const saved = localStorage.getItem('connectorhub_theme');
+  const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+  const theme = saved || (prefersDark ? 'dark' : 'light');
+  document.documentElement.setAttribute('data-theme', theme);
+}
+
+function toggleTheme() {
+  const current = document.documentElement.getAttribute('data-theme');
+  const next = current === 'dark' ? 'light' : 'dark';
+  document.documentElement.setAttribute('data-theme', next);
+  localStorage.setItem('connectorhub_theme', next);
+}
+
+// ====== FAVORITES MANAGEMENT ======
+function loadFavorites() {
+  try {
+    const saved = localStorage.getItem('connectorhub_favorites');
+    if (saved) FAVORITES = new Set(JSON.parse(saved));
+  } catch (e) { FAVORITES = new Set(); }
+}
+
+function saveFavorites() {
+  localStorage.setItem('connectorhub_favorites', JSON.stringify([...FAVORITES]));
+}
+
+function toggleFavorite(articleId) {
+  if (FAVORITES.has(articleId)) {
+    FAVORITES.delete(articleId);
+  } else {
+    FAVORITES.add(articleId);
+  }
+  saveFavorites();
+  updateFavCount();
+}
+
+function isFavorite(articleId) {
+  return FAVORITES.has(articleId);
+}
+
+function updateFavCount() {
+  const favNav = document.getElementById('navFav');
+  if (favNav) {
+    favNav.innerHTML = `⭐ 收藏 <span class="nav-count">(${FAVORITES.size})</span>`;
+  }
+}
+
+// ====== READING TIME ======
+function estimateReadingTime(article) {
+  const text = (article.content || '') + (article.summary || '');
+  if (!text) return null;
+  // Chinese: ~300 chars/min, English: ~200 words/min
+  const charCount = text.replace(/\s/g, '').length;
+  const minutes = Math.ceil(charCount / 300);
+  return minutes < 1 ? 1 : minutes;
+}
+
+function formatReadingTime(minutes) {
+  if (!minutes) return '';
+  if (minutes <= 1) return '1 分钟';
+  if (minutes < 60) return `${minutes} 分钟`;
+  const h = Math.floor(minutes / 60);
+  const m = minutes % 60;
+  return m > 0 ? `${h} 小时 ${m} 分钟` : `${h} 小时`;
+}
+
+// ====== TAG CLOUD ======
+function buildTagCloud() {
+  const tagMap = {};
+  ARTICLES.forEach(a => {
+    const keywords = (a.keywords || '').split(',').map(k => k.trim()).filter(Boolean);
+    keywords.forEach(k => {
+      tagMap[k] = (tagMap[k] || 0) + 1;
+    });
+  });
+
+  // Sort by frequency, take top 40
+  const tags = Object.entries(tagMap)
+    .sort((a, b) => b[1] - a[1])
+    .slice(0, 40);
+
+  return tags;
+}
+
+function renderTagCloud() {
+  const panel = document.getElementById('sidebarTags');
+  const tags = buildTagCloud();
+
+  if (tags.length === 0) {
+    panel.innerHTML = '<h3 class="sidebar-title">🏷️ 标签云</h3><div class="sidebar-loading">暂无标签</div>';
+    return;
+  }
+
+  const html = tags.map(([tag, count]) => {
+    const active = activeTag === tag ? ' active' : '';
+    // Size variation based on count
+    const maxCount = tags[0][1];
+    const ratio = count / maxCount;
+    const fontSize = ratio > 0.7 ? '14px' : ratio > 0.4 ? '12px' : '11px';
+    return `<span class="tag-cloud-item${active}" data-tag="${escapeHTML(tag)}" style="font-size:${fontSize}">
+      ${escapeHTML(tag)}<span class="tag-cloud-count">${count}</span>
+    </span>`;
+  }).join('');
+
+  panel.innerHTML = `<h3 class="sidebar-title">🏷️ 标签云</h3><div class="tag-cloud">${html}</div>`;
+
+  // Click handlers
+  panel.querySelectorAll('.tag-cloud-item').forEach(el => {
+    el.addEventListener('click', () => {
+      const tag = el.dataset.tag;
+      if (activeTag === tag) {
+        // Deselect
+        activeTag = '';
+        el.classList.remove('active');
+      } else {
+        // Select new tag
+        activeTag = tag;
+        panel.querySelectorAll('.tag-cloud-item').forEach(e => e.classList.remove('active'));
+        el.classList.add('active');
+      }
+      currentPage = 1;
+      render();
+    });
+  });
+}
 
 // Merge all data sources
 function loadData() {
@@ -22,25 +152,20 @@ function loadData() {
 // ====== WEEK / DATE HELPERS ======
 
 function parseArticleDate(article) {
-  // Try to extract a usable date from various fields
   const candidates = [];
 
-  // 1. From date field: YYYY-MM-DD
   const dm1 = (article.date || '').match(/(\d{4})-(\d{2})-(\d{2})/);
   if (dm1) candidates.push(new Date(+dm1[1], +dm1[2] - 1, +dm1[3]));
 
-  // 2. From date field: YYYY年M月D日
   const dm2 = (article.date || '').match(/(\d{4})年(\d{1,2})月(\d{1,2})日/);
   if (!candidates.length && dm2) candidates.push(new Date(+dm2[1], +dm2[2] - 1, +dm2[3]));
 
-  // 3. From week_range: extract start date
   const wr = (article.week_range || '');
   const wm1 = wr.match(/(\d{4})-(\d{2})-(\d{2})/);
   if (!candidates.length && wm1) candidates.push(new Date(+wm1[1], +wm1[2] - 1, +wm1[3]));
   const wm2 = wr.match(/(\d{4})年(\d{1,2})月(\d{1,2})日/);
   if (!candidates.length && wm2) candidates.push(new Date(+wm2[1], +wm2[2] - 1, +wm2[3]));
 
-  // 4. From id field: news_2026-04-27_N
   const im = (article.id || '').match(/(\d{4})-(\d{2})-(\d{2})/);
   if (!candidates.length && im) candidates.push(new Date(+im[1], +im[2] - 1, +im[3]));
 
@@ -48,15 +173,13 @@ function parseArticleDate(article) {
 }
 
 function getISOWeek(d) {
-  // Returns { key: '2026-W23', label: '06/02 ~ 06/08 (第23周)', monday: Date }
-  const day = d.getDay() || 7; // Sunday = 7
+  const day = d.getDay() || 7;
   const monday = new Date(d);
   monday.setDate(d.getDate() - day + 1);
   monday.setHours(0, 0, 0, 0);
   const sunday = new Date(monday);
   sunday.setDate(monday.getDate() + 6);
 
-  // ISO week number
   const jan1 = new Date(monday.getFullYear(), 0, 1);
   const jan1Day = jan1.getDay() || 7;
   const daysDiff = (monday - jan1) / 86400000;
@@ -67,9 +190,7 @@ function getISOWeek(d) {
   return { key, label, monday };
 }
 
-function fmtShort(d) {
-  return `${d.getMonth() + 1}/${d.getDate()}`;
-}
+function fmtShort(d) { return `${d.getMonth() + 1}/${d.getDate()}`; }
 
 function fmtDate(d) {
   const y = d.getFullYear();
@@ -92,33 +213,28 @@ function buildWeekDropdown() {
       }
       WEEK_MAP[wk.key].articles.push(idx);
     }
-    // Store week_key on article for filtering
     article._weekKey = d ? getISOWeek(d).key : '';
   });
 
-  // Build dropdown
   const select = document.getElementById('weekSelect');
-  // Sort weeks newest first
   const sortedWeeks = Object.values(WEEK_MAP).sort((a, b) => b.monday - a.monday);
 
-  // Keep "全部时间" option, add week options
   select.innerHTML = '<option value="all">全部时间</option>';
   sortedWeeks.forEach((wk, i) => {
     const opt = document.createElement('option');
-    opt.value = wk.label.split('~')[0].trim(); // use monday string as value
-    // Store the week key for lookup
     const weekKey = Object.keys(WEEK_MAP).find(k => WEEK_MAP[k].monday.getTime() === wk.monday.getTime());
     opt.value = weekKey;
     opt.textContent = wk.label;
     select.appendChild(opt);
   });
 
-  // Default to "全部时间"
   select.value = 'all';
 }
 
 // ====== INIT ======
 function init() {
+  initTheme();
+  loadFavorites();
   showSkeleton();
   ARTICLES = loadData();
   if (ARTICLES.length === 0) {
@@ -136,10 +252,19 @@ function init() {
   setupBreadcrumb();
   setupBackToTop();
   setupSubFilters();
+  setupFavFilter();
   setupNewsletter();
   setupMfrShowcase();
+  setupThemeToggle();
   render();
   updateSidebar();
+  renderTagCloud();
+  updateFavCount();
+}
+
+// ====== THEME TOGGLE ======
+function setupThemeToggle() {
+  document.getElementById('themeToggle').addEventListener('click', toggleTheme);
 }
 
 // ====== NAV COUNTS ======
@@ -156,7 +281,6 @@ function updateNavCounts() {
 // ====== HERO STATS ======
 function updateHeroStats() {
   const newsCount = ARTICLES.filter(a => a.category === '行业新闻').length;
-  const techCount = ARTICLES.filter(a => a.category === '技术文章').length;
   const mfrCount = ARTICLES.filter(a => a.category === '厂家档案').length;
   document.getElementById('heroTotal').textContent = ARTICLES.length;
   document.getElementById('heroNews').textContent = newsCount;
@@ -181,7 +305,6 @@ function setupHeroSearch() {
     }, 300);
   });
 
-  // Sync main search input back to hero
   mainInput.addEventListener('input', () => {
     heroInput.value = mainInput.value;
   });
@@ -194,9 +317,49 @@ function setupSubFilters() {
       document.querySelectorAll('.subfilter').forEach(b => b.classList.remove('active'));
       btn.classList.add('active');
       subFilter = btn.dataset.subfilter;
+      showFavOnly = false;
+      document.getElementById('subfilterFav').classList.remove('active');
       currentPage = 1;
       render();
     });
+  });
+}
+
+// ====== FAV FILTER ======
+function setupFavFilter() {
+  // Sidebar fav filter button
+  document.getElementById('subfilterFav').addEventListener('click', () => {
+    const btn = document.getElementById('subfilterFav');
+    if (showFavOnly) {
+      showFavOnly = false;
+      btn.classList.remove('active');
+    } else {
+      showFavOnly = true;
+      btn.classList.add('active');
+      // Clear other subfilters
+      document.querySelectorAll('.subfilter').forEach(b => b.classList.remove('active'));
+      document.querySelector('.subfilter[data-subfilter="all"]').classList.add('active');
+      subFilter = 'all';
+    }
+    currentPage = 1;
+    render();
+  });
+
+  // Nav fav tab
+  document.getElementById('navFav').addEventListener('click', () => {
+    // Deactivate all nav links
+    document.querySelectorAll('.nav-link').forEach(b => b.classList.remove('active'));
+    document.getElementById('navFav').classList.add('active');
+    currentCat = 'fav';
+    showFavOnly = true;
+    currentPage = 1;
+    // Reset subfilters
+    document.querySelectorAll('.subfilter').forEach(b => b.classList.remove('active'));
+    document.querySelector('.subfilter[data-subfilter="all"]').classList.add('active');
+    subFilter = 'all';
+    document.getElementById('subfilterFav').classList.add('active');
+    updateBreadcrumb();
+    render();
   });
 }
 
@@ -205,13 +368,15 @@ function setupNav() {
   document.querySelectorAll('.nav-link').forEach(btn => {
     btn.addEventListener('click', () => {
       document.querySelectorAll('.nav-link').forEach(b => b.classList.remove('active'));
+      document.getElementById('navFav').classList.remove('active');
       btn.classList.add('active');
       currentCat = btn.dataset.cat;
       currentPage = 1;
-      // Reset sub-filter when main nav changes
       subFilter = 'all';
+      showFavOnly = false;
       document.querySelectorAll('.subfilter').forEach(b => b.classList.remove('active'));
       document.querySelector('.subfilter[data-subfilter="all"]').classList.add('active');
+      document.getElementById('subfilterFav').classList.remove('active');
       updateBreadcrumb();
       render();
     });
@@ -245,17 +410,21 @@ function setupSearch() {
 
 // ====== BREADCRUMB ======
 function setupBreadcrumb() {
-  // Home link always resets
   document.querySelector('.breadcrumb-link').addEventListener('click', (e) => {
     e.preventDefault();
     document.querySelectorAll('.nav-link').forEach(b => b.classList.remove('active'));
+    document.getElementById('navFav').classList.remove('active');
     document.querySelector('.nav-link[data-cat="all"]').classList.add('active');
     currentCat = 'all';
     currentPage = 1;
     subFilter = 'all';
+    showFavOnly = false;
+    activeTag = '';
     document.querySelectorAll('.subfilter').forEach(b => b.classList.remove('active'));
     document.querySelector('.subfilter[data-subfilter="all"]').classList.add('active');
+    document.getElementById('subfilterFav').classList.remove('active');
     updateBreadcrumb();
+    renderTagCloud();
     render();
   });
 }
@@ -263,7 +432,9 @@ function setupBreadcrumb() {
 function updateBreadcrumb() {
   const current = document.getElementById('breadcrumbCurrent');
   if (currentCat === 'all') {
-    current.textContent = '全部文章';
+    current.textContent = showFavOnly ? '收藏文章' : '全部文章';
+  } else if (currentCat === 'fav') {
+    current.textContent = '收藏文章';
   } else {
     current.textContent = currentCat;
   }
@@ -292,11 +463,11 @@ function setupBackToTop() {
     window.scrollTo({ top: 0, behavior: 'smooth' });
   });
 }
+
 function setupWeekFilter() {
   const select = document.getElementById('weekSelect');
   select.addEventListener('change', () => {
     selectedWeek = select.value;
-    // Clear quick filter active states when manually selecting a week
     if (selectedWeek !== 'all') {
       document.querySelectorAll('.qfilter').forEach(b => b.classList.remove('active'));
     }
@@ -332,7 +503,6 @@ function applyQuickFilter(range) {
     }
     case 'month':
       select.value = 'all';
-      // Fall through to custom month logic in getFiltered
       break;
     case '3month':
       select.value = 'all';
@@ -348,13 +518,18 @@ function getFiltered() {
   let articles = ARTICLES;
 
   // Category
-  if (currentCat !== 'all') {
+  if (currentCat !== 'all' && currentCat !== 'fav') {
     articles = articles.filter(a => a.category === currentCat);
   }
 
   // Sub-filter (content type) - works on top of category
   if (subFilter !== 'all') {
     articles = articles.filter(a => a.category === subFilter);
+  }
+
+  // Favorites only
+  if (showFavOnly || currentCat === 'fav') {
+    articles = articles.filter(a => isFavorite(a.id));
   }
 
   // Week filter (from dropdown)
@@ -382,6 +557,14 @@ function getFiltered() {
         return d && fmtDate(d) >= cutoff;
       });
     }
+  }
+
+  // Tag cloud filter
+  if (activeTag) {
+    articles = articles.filter(a => {
+      const keywords = (a.keywords || '').split(',').map(k => k.trim()).filter(Boolean);
+      return keywords.includes(activeTag);
+    });
   }
 
   // Keyword search
@@ -439,13 +622,14 @@ function render() {
   const start = (currentPage - 1) * PER_PAGE;
   const pageArticles = filtered.slice(start, start + PER_PAGE);
 
-  // Stats - show week label if a week is selected
+  // Stats
   const statCount = document.getElementById('statCount');
+  let statLabel = showFavOnly ? `收藏 ${total} 篇` : `共 ${total} 篇文章`;
+  if (activeTag) statLabel += ` · 标签：${activeTag}`;
   if (selectedWeek !== 'all' && WEEK_MAP[selectedWeek]) {
-    statCount.innerHTML = `共 ${total} 篇文章 · <span style="color:var(--primary)">${WEEK_MAP[selectedWeek].label}</span>`;
-  } else {
-    statCount.textContent = `共 ${total} 篇文章`;
+    statLabel += ` · <span style="color:var(--primary)">${WEEK_MAP[selectedWeek].label}</span>`;
   }
+  statCount.innerHTML = statLabel;
 
   const statRange = document.getElementById('statRange');
   const dates = filtered.map(a => parseArticleDate(a)).filter(d => d && !isNaN(d.getTime())).sort((a, b) => b - a);
@@ -459,9 +643,9 @@ function render() {
 
   // Category distribution dots
   const statDots = document.getElementById('statDots');
-  const newsCount = articles.filter(a => a.category === '行业新闻').length;
-  const techCount = articles.filter(a => a.category === '技术文章').length;
-  const mfrCount = articles.filter(a => a.category === '厂家档案').length;
+  const newsCount = filtered.filter(a => a.category === '行业新闻').length;
+  const techCount = filtered.filter(a => a.category === '技术文章').length;
+  const mfrCount = filtered.filter(a => a.category === '厂家档案').length;
   statDots.innerHTML = `
     <span class="stat-dot dot-news">新闻 ${newsCount}</span>
     <span class="stat-dot dot-tech">技术 ${techCount}</span>
@@ -475,6 +659,15 @@ function render() {
   if (total === 0) {
     grid.innerHTML = '';
     noRes.style.display = 'block';
+    if (showFavOnly) {
+      noRes.querySelector('p').textContent = '还没有收藏文章';
+      noRes.querySelector('.hint').textContent = '点击文章卡片上的 ⭐ 即可收藏';
+      noRes.querySelector('.no-results-icon').textContent = '⭐';
+    } else {
+      noRes.querySelector('p').textContent = '没有找到匹配的文章';
+      noRes.querySelector('.hint').textContent = '试试调整筛选条件或搜索关键词';
+      noRes.querySelector('.no-results-icon').textContent = '🔍';
+    }
   } else {
     noRes.style.display = 'none';
     grid.innerHTML = pageArticles.map(a => cardHTML(a)).join('');
@@ -483,9 +676,28 @@ function render() {
   // Pagination
   renderPagination(totalPages, total);
 
-  // Card click handlers
+  // Card click handlers (excluding fav button)
   grid.querySelectorAll('.article-card').forEach((card, i) => {
-    card.addEventListener('click', () => showDetail(pageArticles[i]));
+    card.addEventListener('click', (e) => {
+      // Don't open modal if clicking fav button
+      if (e.target.closest('.card-fav-btn')) return;
+      showDetail(pageArticles[i]);
+    });
+  });
+
+  // Card fav button handlers
+  grid.querySelectorAll('.card-fav-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const id = btn.dataset.id;
+      toggleFavorite(id);
+      btn.classList.toggle('active');
+      btn.textContent = isFavorite(id) ? '★' : '☆';
+      // Re-render if in fav-only mode
+      if (showFavOnly) {
+        render();
+      }
+    });
   });
 
   // Update dynamic Schema.org
@@ -499,6 +711,9 @@ function cardHTML(a) {
   const iconEmoji = a.category === '行业新闻' ? '📰' : a.category === '技术文章' ? '🔧' : '🏭';
   const impClass = (a.importance || '').includes('高') ? 'imp-high' : (a.importance || '').includes('中') ? 'imp-mid' : '';
   const keywords = (a.keywords || '').split(',').filter(Boolean).slice(0, 4);
+  const readMin = estimateReadingTime(a);
+  const favActive = isFavorite(a.id) ? ' active' : '';
+  const favIcon = isFavorite(a.id) ? '★' : '☆';
 
   return `
     <div class="article-card ${cardClass}">
@@ -508,12 +723,16 @@ function cardHTML(a) {
           <span class="article-badge ${badgeClass}">${a.category}</span>
         </div>
         <span class="article-date-card" style="margin-left:auto">${a.date || ''}</span>
+        <button class="card-fav-btn${favActive}" data-id="${escapeHTML(a.id)}" title="${isFavorite(a.id) ? '取消收藏' : '收藏'}">${favIcon}</button>
       </div>
       <h3 class="card-title">${escapeHTML(a.title)}</h3>
       ${a.source ? `<div class="card-source">📰 ${escapeHTML(a.source)}</div>` : ''}
       <p class="card-summary">${escapeHTML(a.summary || a.content || '').substring(0, 200)}</p>
       <div class="card-footer">
-        ${a.importance ? `<span class="card-importance ${impClass}">${escapeHTML(a.importance)}</span>` : '<span></span>'}
+        <div style="display:flex;align-items:center;gap:8px;">
+          ${a.importance ? `<span class="card-importance ${impClass}">${escapeHTML(a.importance)}</span>` : ''}
+          ${readMin ? `<span class="reading-time"><span class="reading-time-icon">⏱</span>${formatReadingTime(readMin)}</span>` : ''}
+        </div>
         ${keywords.length ? `<div class="card-keywords">${keywords.map(k => `<span>${escapeHTML(k.trim())}</span>`).join('')}</div>` : ''}
       </div>
     </div>
@@ -558,7 +777,10 @@ function renderPagination(totalPages, total) {
 }
 
 // ====== DETAIL MODAL ======
+let currentDetailArticle = null;
+
 function showDetail(article) {
+  currentDetailArticle = article;
   const badgeClass = article.category === '行业新闻' ? 'badge-news' : article.category === '技术文章' ? 'badge-tech' : 'badge-mfr';
 
   document.getElementById('detailBadge').textContent = article.category;
@@ -567,6 +789,16 @@ function showDetail(article) {
   document.getElementById('detailTitle').textContent = article.title;
   document.getElementById('detailSummary').textContent = article.summary || article.content || '暂无摘要';
   document.getElementById('detailContent').textContent = article.content || '';
+
+  // Reading time
+  const readMin = estimateReadingTime(article);
+  const readingTimeEl = document.getElementById('detailReadingTime');
+  if (readMin) {
+    readingTimeEl.innerHTML = `<span class="reading-time-icon">⏱</span> ${formatReadingTime(readMin)}阅读`;
+    readingTimeEl.style.display = '';
+  } else {
+    readingTimeEl.style.display = 'none';
+  }
 
   let meta = '';
   if (article.source) meta += `来源：${article.source}`;
@@ -581,16 +813,26 @@ function showDetail(article) {
     linkDiv.innerHTML = '';
   }
 
+  // Favorite button state
+  updateDetailFavBtn(article);
+
   document.getElementById('detailModal').classList.add('active');
   document.body.style.overflow = 'hidden';
 
-  // Render related articles
   renderRelated(article);
+}
+
+function updateDetailFavBtn(article) {
+  const favBtn = document.getElementById('detailFavBtn');
+  const fav = isFavorite(article.id);
+  favBtn.className = `detail-fav-btn${fav ? ' active' : ''}`;
+  favBtn.innerHTML = fav ? '★ 已收藏' : '⭐ 收藏';
 }
 
 function hideDetail() {
   document.getElementById('detailModal').classList.remove('active');
   document.body.style.overflow = '';
+  currentDetailArticle = null;
 }
 
 document.getElementById('detailClose').addEventListener('click', hideDetail);
@@ -601,10 +843,18 @@ document.addEventListener('keydown', (e) => {
   if (e.key === 'Escape') hideDetail();
 });
 
+// Detail favorite button
+document.getElementById('detailFavBtn').addEventListener('click', () => {
+  if (!currentDetailArticle) return;
+  toggleFavorite(currentDetailArticle.id);
+  updateDetailFavBtn(currentDetailArticle);
+  // Re-render cards to update star state
+  render();
+});
+
 // ====== DYNAMIC SCHEMA ======
 function updateDynamicSchemas(articles) {
-  // BreadcrumbList
-  const catLabel = currentCat === 'all' ? '全部文章' : currentCat;
+  const catLabel = currentCat === 'all' ? (showFavOnly ? '收藏文章' : '全部文章') : currentCat;
   const breadcrumbJSON = {
     '@context': 'https://schema.org',
     '@type': 'BreadcrumbList',
@@ -615,7 +865,6 @@ function updateDynamicSchemas(articles) {
   };
   upsertSchema('schema-breadcrumb', breadcrumbJSON);
 
-  // ItemList for current page articles
   const itemListJSON = {
     '@context': 'https://schema.org',
     '@type': 'ItemList',
@@ -647,7 +896,6 @@ function upsertSchema(id, json) {
 
 // ====== SIDEBAR ======
 function updateSidebar() {
-  // Panel 1: 本周热门 - top 6 articles from the most recent week
   const now = new Date();
   const thisWeek = getISOWeek(now);
   const weekArticles = ARTICLES.filter(a => a._weekKey === thisWeek.key);
@@ -663,7 +911,6 @@ function updateSidebar() {
     hotPanel.innerHTML = '<h3 class="sidebar-title">🔥 本周热门</h3>' + renderSidebarList(weekArticles.slice(0, 6));
   }
 
-  // Panel 2: 分类统计 (clickable)
   const catPanel = document.getElementById('sidebarCats');
   const cats = [
     { name: '行业新闻', dot: 'var(--primary)', icon: '📰' },
@@ -683,26 +930,27 @@ function updateSidebar() {
       </div>`;
     }).join('')}
   `;
-  // Click handlers
   catPanel.querySelectorAll('.sidebar-cat-stat').forEach(el => {
     el.addEventListener('click', () => {
       const cat = el.dataset.cat;
       document.querySelectorAll('.nav-link').forEach(b => b.classList.remove('active'));
+      document.getElementById('navFav').classList.remove('active');
       const targetNav = document.querySelector(`.nav-link[data-cat="${cat}"]`);
       if (targetNav) targetNav.classList.add('active');
       currentCat = cat;
       currentPage = 1;
       subFilter = 'all';
+      showFavOnly = false;
       document.querySelectorAll('.subfilter').forEach(b => b.classList.remove('active'));
       const allSub = document.querySelector('.subfilter[data-subfilter="all"]');
       if (allSub) allSub.classList.add('active');
+      document.getElementById('subfilterFav').classList.remove('active');
       updateBreadcrumb();
       render();
       window.scrollTo({ top: 0, behavior: 'smooth' });
     });
   });
 
-  // Panel 3: 最近更新 - 5 most recent by date
   const recentPanel = document.getElementById('sidebarRecent');
   const recent5 = ARTICLES
     .filter(a => parseArticleDate(a))
@@ -717,11 +965,13 @@ function renderSidebarList(articles, emptyMsg) {
   }
   const listHtml = articles.map((a, i) => {
     const badgeClass = a.category === '行业新闻' ? 'badge-news' : a.category === '技术文章' ? 'badge-tech' : 'badge-mfr';
+    const readMin = estimateReadingTime(a);
     return `<div class="sidebar-item" data-idx="${i}" data-global="${ARTICLES.indexOf(a)}">
       <div class="sidebar-item-title">${escapeHTML(a.title)}</div>
       <div class="sidebar-item-meta">
         <span class="article-badge ${badgeClass} sidebar-item-badge">${a.category}</span>
         <span>${a.date || ''}</span>
+        ${readMin ? `<span class="reading-time">⏱${formatReadingTime(readMin)}</span>` : ''}
       </div>
     </div>`;
   }).join('');
@@ -744,7 +994,6 @@ function setupMfrShowcase() {
   const grid = document.getElementById('mfrShowcaseGrid');
   const moreBtn = document.getElementById('mfrShowcaseMore');
 
-  // Show up to 6 manufacturers, prioritize those with more content
   const showcase = mfrArticles
     .sort((a, b) => (b.content || '').length - (a.content || '').length)
     .slice(0, 6);
@@ -762,7 +1011,6 @@ function setupMfrShowcase() {
     </div>`;
   }).join('');
 
-  // Click handlers
   grid.querySelectorAll('.mfr-card').forEach(card => {
     card.addEventListener('click', () => {
       const idx = parseInt(card.dataset.global);
@@ -772,17 +1020,19 @@ function setupMfrShowcase() {
     });
   });
 
-  // "查看全部" button - switch to 厂家档案 tab
   moreBtn.addEventListener('click', () => {
     document.querySelectorAll('.nav-link').forEach(b => b.classList.remove('active'));
+    document.getElementById('navFav').classList.remove('active');
     const targetNav = document.querySelector('.nav-link[data-cat="厂家档案"]');
     if (targetNav) targetNav.classList.add('active');
     currentCat = '厂家档案';
     currentPage = 1;
     subFilter = 'all';
+    showFavOnly = false;
     document.querySelectorAll('.subfilter').forEach(b => b.classList.remove('active'));
     const allSub = document.querySelector('.subfilter[data-subfilter="all"]');
     if (allSub) allSub.classList.add('active');
+    document.getElementById('subfilterFav').classList.remove('active');
     updateBreadcrumb();
     render();
     window.scrollTo({ top: document.querySelector('.container').offsetTop - 80, behavior: 'smooth' });
@@ -796,7 +1046,6 @@ function setupNewsletter() {
   const btn = document.getElementById('newsletterBtn');
   const status = document.getElementById('newsletterStatus');
 
-  // Check if already subscribed
   const saved = localStorage.getItem('connectorhub_newsletter');
   if (saved) {
     emailInput.value = saved;
@@ -812,7 +1061,6 @@ function setupNewsletter() {
     e.preventDefault();
     const email = emailInput.value.trim();
 
-    // Basic email validation
     if (!email) {
       status.textContent = '请输入邮箱地址';
       status.className = 'newsletter-status error';
@@ -824,7 +1072,6 @@ function setupNewsletter() {
       return;
     }
 
-    // Save subscription
     localStorage.setItem('connectorhub_newsletter', email);
     emailInput.disabled = true;
     btn.disabled = true;
@@ -838,23 +1085,18 @@ function setupNewsletter() {
 function findRelatedArticles(article, count = 3) {
   const articleKeywords = (article.keywords || '').split(',').map(k => k.trim()).filter(Boolean);
 
-  // Score other articles by keyword overlap + same category
   const scored = ARTICLES
     .filter(a => a !== article && a.title !== article.title)
     .map(a => {
       let score = 0;
-      // Same category bonus
       if (a.category === article.category) score += 3;
-      // Keyword overlap
       const aKeywords = (a.keywords || '').split(',').map(k => k.trim()).filter(Boolean);
       const commonKeywords = articleKeywords.filter(k => aKeywords.includes(k));
       score += commonKeywords.length * 5;
-      // Title word overlap
       const titleWords = (article.title || '').split(/[\s，,、]+/).filter(w => w.length > 1);
       const aTitleWords = (a.title || '').split(/[\s，,、]+/).filter(w => w.length > 1);
       const commonTitle = titleWords.filter(w => aTitleWords.includes(w));
       score += commonTitle.length * 2;
-      // Recent bonus
       const d = parseArticleDate(a);
       if (d) {
         const daysAgo = (new Date() - d) / 86400000;
@@ -866,7 +1108,6 @@ function findRelatedArticles(article, count = 3) {
     .sort((a, b) => b.score - a.score)
     .slice(0, count);
 
-  // If not enough, fill with same-category articles
   if (scored.length < count) {
     const sameCat = ARTICLES
       .filter(a => a !== article && a.title !== article.title && a.category === article.category)
@@ -888,22 +1129,24 @@ function renderRelated(article) {
   list.innerHTML = related.map(a => {
     const badgeClass = a.category === '行业新闻' ? 'badge-news' : a.category === '技术文章' ? 'badge-tech' : 'badge-mfr';
     const iconEmoji = a.category === '行业新闻' ? '📰' : a.category === '技术文章' ? '🔧' : '🏭';
+    const readMin = estimateReadingTime(a);
     return `<div class="related-item" data-global="${ARTICLES.indexOf(a)}">
       <div class="related-item-left">
         <span class="related-item-icon">${iconEmoji}</span>
         <span class="related-item-text">${escapeHTML(a.title)}</span>
       </div>
-      <span class="article-badge ${badgeClass} related-item-badge">${a.category}</span>
+      <div style="display:flex;align-items:center;gap:6px;">
+        ${readMin ? `<span class="reading-time" style="flex-shrink:0">⏱${formatReadingTime(readMin)}</span>` : ''}
+        <span class="article-badge ${badgeClass} related-item-badge">${a.category}</span>
+      </div>
     </div>`;
   }).join('');
 
-  // Click handlers for related items
   list.querySelectorAll('.related-item').forEach(el => {
     el.addEventListener('click', () => {
       const idx = parseInt(el.dataset.global);
       if (!isNaN(idx) && ARTICLES[idx]) {
         hideDetail();
-        // Small delay for modal close animation, then show new detail
         setTimeout(() => showDetail(ARTICLES[idx]), 200);
       }
     });
