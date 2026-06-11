@@ -12,8 +12,14 @@ let supabase = null;
 
 function initSupabase() {
   if (window.supabase && window.supabase.createClient) {
-    supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
-    return true;
+    try {
+      supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+      console.log('[Auth] Supabase 初始化成功');
+      return true;
+    } catch (e) {
+      console.error('[Auth] Supabase 初始化失败:', e.message);
+      return false;
+    }
   }
   console.warn('[Auth] Supabase SDK 未加载');
   return false;
@@ -512,9 +518,13 @@ function translateAuthError(msg) {
 // 初始化
 function initAuth() {
   if (!initSupabase()) {
-    // Supabase SDK 没加载，隐藏登录按钮或降级
     const btn = document.getElementById('userBtn');
-    if (btn) btn.style.display = 'none';
+    if (btn) {
+      btn.textContent = '⚠️ 登录服务异常';
+      btn.title = '无法连接到认证服务，请刷新页面重试';
+      btn.style.color = 'var(--red)';
+      btn.style.borderColor = 'var(--red)';
+    }
     return;
   }
   setupAuthListener();
