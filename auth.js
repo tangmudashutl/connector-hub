@@ -515,23 +515,36 @@ function translateAuthError(msg) {
 }
 
 // ============================================================
-// 初始化
+// 初始化（带重试，等待 Supabase SDK 加载）
 function initAuth() {
-  if (!initSupabase()) {
-    const btn = document.getElementById('userBtn');
-    if (btn) {
-      btn.textContent = '⚠️ 登录服务异常';
-      btn.title = '无法连接到认证服务，请刷新页面重试';
-      btn.style.color = 'var(--red)';
-      btn.style.borderColor = 'var(--red)';
-    }
+  if (initSupabase()) {
+    setupAuthListener();
+    setupUserButton();
+    console.log('[Auth] 初始化完成');
     return;
   }
-  setupAuthListener();
-  setupUserButton();
+  // SDK 尚未加载，重试最多 20 次（10 秒）
+  let retries = 0;
+  const maxRetries = 20;
+  const interval = setInterval(() => {
+    retries++;
+    if (initSupabase()) {
+      clearInterval(interval);
+      setupAuthListener();
+      setupUserButton();
+      console.log('[Auth] 初始化完成（重试 ' + retries + ' 次）');
+    } else if (retries >= maxRetries) {
+      clearInterval(interval);
+      const btn = document.getElementById('userBtn');
+      if (btn) {
+        btn.textContent = '⚠️ 登录服务异常';
+        btn.title = '无法连接到认证服务，请刷新页面重试';
+        btn.style.color = 'var(--red)';
+        btn.style.borderColor = 'var(--red)';
+      }
+      console.error('[Auth] Supabase SDK 加载失败：cdn 可能不可达');
+    }
+  }, 500);
 }
 
-document.addEventListener('DOMContentLoaded', () => {
-  // 在主 app init 之后初始化 auth
-  setTimeout(initAuth, 100);
-});
+document.addEventListener('DOMContentLoaded', initAuth);
