@@ -3,8 +3,8 @@
 // 使用前请替换下方的 SUPABASE_URL 和 SUPABASE_ANON_KEY
 // 获取方式：https://supabase.com/dashboard → 你的项目 → Settings → API
 
-const SUPABASE_URL = 'YOUR_SUPABASE_URL';     // 例如: https://xxxxx.supabase.co
-const SUPABASE_ANON_KEY = 'YOUR_ANON_KEY';     // 例如: eyJhbGci...
+const SUPABASE_URL = 'https://clwqwidwjgharpefrufv.supabase.co';
+const SUPABASE_ANON_KEY = 'sb_publishable_wZDOWH6TwiEyPUNzgcWLhQ_HAZiPYZw';
 
 // ============================================================
 // Supabase 客户端
