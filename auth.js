@@ -489,3 +489,52 @@ async function initAuth() {
 }
 
 document.addEventListener('DOMContentLoaded', initAuth);
+
+// ============================================================
+// Tab 切换 + 表单绑定（之前遗漏了！）
+function setupAuthTabs(overlay) {
+  var tabs = overlay.querySelectorAll('.auth-tab');
+  for (var i = 0; i < tabs.length; i++) {
+    tabs[i].addEventListener('click', function () {
+      var tab = this.getAttribute('data-tab');
+      if (tab === 'login' || tab === 'signup') {
+        overlay.querySelector('.auth-body').innerHTML = renderAuthBody(tab);
+        setupAuthForms(overlay);
+      }
+    });
+  }
+}
+
+function setupAuthForms(overlay) {
+  var loginForm = overlay.querySelector('#authLoginForm');
+  if (loginForm) {
+    loginForm.addEventListener('submit', function (e) {
+      e.preventDefault();
+      handleLogin();
+    });
+  }
+
+  var signupForm = overlay.querySelector('#authSignupForm');
+  if (signupForm) {
+    signupForm.addEventListener('submit', function (e) {
+      e.preventDefault();
+      handleSignup();
+    });
+  }
+
+  var resetForm = overlay.querySelector('#authResetForm');
+  if (resetForm) {
+    resetForm.addEventListener('submit', function (e) {
+      e.preventDefault();
+      handleResetPassword();
+    });
+  }
+}
+
+function switchAuthTab(tab) {
+  var overlay = document.getElementById('authOverlay');
+  if (overlay) {
+    overlay.querySelector('.auth-body').innerHTML = renderAuthBody(tab);
+    setupAuthForms(overlay);
+  }
+}
