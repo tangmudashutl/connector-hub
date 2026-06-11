@@ -40,13 +40,25 @@ function saveFavorites() {
 }
 
 function toggleFavorite(articleId) {
+  let wasRemoved = false;
   if (FAVORITES.has(articleId)) {
     FAVORITES.delete(articleId);
+    wasRemoved = true;
   } else {
     FAVORITES.add(articleId);
   }
   saveFavorites();
   updateFavCount();
+
+  // 同步到云端
+  if (typeof currentUser !== 'undefined' && currentUser) {
+    if (wasRemoved) {
+      if (typeof removeCloudFavorite === 'function') removeCloudFavorite(articleId);
+    } else {
+      const article = ARTICLES.find(a => a.id === articleId);
+      if (typeof saveCloudFavorite === 'function') saveCloudFavorite(articleId, article ? article.title : '');
+    }
+  }
 }
 
 function isFavorite(articleId) {

@@ -6,6 +6,7 @@
 <meta name="description" content="全球连接器行业知识库，实时追踪连接器行业动态，聚合全球一手资讯、技术解析与厂家档案。208篇专业文章，涵盖行业新闻、技术文章、厂家档案。">
 <title>ConnectorHUB - 连接器行业知识库</title>
 <link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="auth.css">
 <!-- Schema.org JSON-LD -->
 <script type="application/ld+json">
 {
@@ -47,6 +48,10 @@
       <span class="icon-moon">🌙</span>
       <span class="icon-sun">☀️</span>
     </button>
+    <div class="user-dropdown">
+      <button class="user-btn" id="userBtn">👤 登录</button>
+      <div class="user-dropdown-menu" id="userDropdownMenu"></div>
+    </div>
   </div>
 </header>
 
@@ -216,13 +221,17 @@
     <div class="footer-brand"><span class="logo-icon">⬡</span> ConnectorHUB</div>
     <p class="footer-desc">连接器行业知识库 · 208篇专业文章</p>
   </div>
-  <div class="footer-bottom">© 2026 ConnectorHUB. Powered by GitHub Pages.</div>
+  <div class="footer-bottom">© 2026 ConnectorHUB. Powered by Git.</div>
 </footer>
+
+<!-- Supabase SDK -->
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
 
 <script src="data_news.js"></script>
 <script src="data_tech.js"></script>
 <script src="data_mfr.js"></script>
 <script src="app.js"></script>
+<script src="auth.js"></script>
 <button class="back-to-top" id="backToTop" title="返回顶部">↑</button>
 </body>
 </html>
