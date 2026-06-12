@@ -1,0 +1,123 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>交流讨论 - ConnectorHUB</title>
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="auth.css">
+<link rel="stylesheet" href="discussions.css">
+</head>
+<body>
+
+<header class="header">
+  <div class="header-inner">
+    <a class="logo" href="index.html"><span class="logo-icon">⬡</span><span class="logo-text">Connector<strong>HUB</strong></span></a>
+    <nav class="nav" id="mainNav">
+      <a class="nav-link" href="index.html">首页</a>
+      <a class="nav-link active" href="discussions.html">💬 交流</a>
+    </nav>
+    <button class="theme-toggle" id="themeToggle" title="切换主题">
+      <span class="icon-moon">🌙</span>
+      <span class="icon-sun">☀️</span>
+    </button>
+    <div class="user-dropdown">
+      <button class="user-btn" id="userBtn">👤 登录</button>
+      <div class="user-dropdown-menu" id="userDropdownMenu"></div>
+    </div>
+  </div>
+</header>
+
+<div class="discussions-container">
+  <!-- 发帖区域 -->
+  <div class="discussion-compose" id="composeArea">
+    <div class="compose-header">
+      <h2>💬 交流讨论区</h2>
+      <p class="compose-hint">提出问题、分享需求、交流技术 — 登录后即可参与讨论</p>
+    </div>
+    <div class="compose-card" id="composeCard">
+      <div class="compose-login-prompt" id="loginPrompt" style="display:none;">
+        <p>请先 <a href="javascript:void(0)" onclick="openAuthModal('login')">登录</a> 后参与讨论</p>
+      </div>
+      <div class="compose-form" id="composeForm" style="display:none;">
+        <div class="compose-type-row">
+          <label class="type-label">类型：</label>
+          <select id="postType" class="compose-type-select">
+            <option value="question">❓ 问题求助</option>
+            <option value="request">📋 需求留言</option>
+            <option value="discussion">💡 技术交流</option>
+            <option value="suggestion">✅ 建议反馈</option>
+          </select>
+        </div>
+        <input type="text" id="postTitle" class="compose-title-input" placeholder="标题（简要描述你的问题或需求）" maxlength="100">
+        <textarea id="postContent" class="compose-content-input" placeholder="详细描述..." rows="4"></textarea>
+        <div class="compose-actions">
+          <span class="compose-char-count" id="charCount">0 / 1000</span>
+          <button class="compose-submit-btn" id="submitPostBtn" onclick="submitPost()">发布讨论</button>
+        </div>
+        <div class="compose-error" id="postError"></div>
+      </div>
+    </div>
+  </div>
+
+  <!-- 筛选栏 -->
+  <div class="discussion-filters">
+    <div class="filter-tabs" id="filterTabs">
+      <button class="filter-tab active" data-filter="all" onclick="filterPosts('all')">全部</button>
+      <button class="filter-tab" data-filter="question" onclick="filterPosts('question')">❓ 问题</button>
+      <button class="filter-tab" data-filter="request" onclick="filterPosts('request')">📋 需求</button>
+      <button class="filter-tab" data-filter="discussion" onclick="filterPosts('discussion')">💡 交流</button>
+      <button class="filter-tab" data-filter="suggestion" onclick="filterPosts('suggestion')">✅ 建议</button>
+    </div>
+    <div class="filter-sort">
+      <select id="sortSelect" onchange="loadPosts()">
+        <option value="created_at.desc">最新</option>
+        <option value="created_at.asc">最早</option>
+        <option value="like_count.desc">最多点赞</option>
+        <option value="reply_count.desc">最多回复</option>
+      </select>
+    </div>
+  </div>
+
+  <!-- 帖子列表 -->
+  <div class="discussion-list" id="discussionList">
+    <div class="discussion-loading">加载中...</div>
+  </div>
+
+  <!-- 加载更多 -->
+  <div class="discussion-load-more" id="loadMore" style="display:none;">
+    <button class="load-more-btn" onclick="loadMorePosts()">加载更多</button>
+  </div>
+</div>
+
+<!-- 回复弹窗 -->
+<div class="reply-overlay" id="replyOverlay" onclick="closeReplyModal(event)">
+  <div class="reply-modal">
+    <div class="reply-header">
+      <h3 id="replyPostTitle">回复</h3>
+      <button class="reply-close" onclick="closeReplyModal()">✕</button>
+    </div>
+    <div class="reply-body" id="replyBody">
+      <div class="reply-post-content" id="replyPostContent"></div>
+      <div class="reply-list" id="replyList"></div>
+      <div class="reply-compose" id="replyComposeArea">
+        <textarea id="replyInput" class="reply-input" placeholder="写下你的回复..." rows="3"></textarea>
+        <button class="reply-submit-btn" onclick="submitReply()">回复</button>
+      </div>
+    </div>
+  </div>
+</div>
+
+<footer class="footer">
+  <div class="container footer-inner">
+    <div class="footer-brand"><span class="logo-icon">⬡</span> ConnectorHUB</div>
+    <p class="footer-desc">连接器行业知识库 · 交流讨论区</p>
+  </div>
+  <div class="footer-bottom">© 2026 ConnectorHUB. Powered by Git.</div>
+</footer>
+
+<script src="auth.js"></script>
+<script src="discussions.js"></script>
+<button class="back-to-top" id="backToTop" title="返回顶部" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</button>
+</body>
+</html>
