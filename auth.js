@@ -362,9 +362,9 @@ function updateDropdownMenu() {
   var favCount = typeof FAVORITES !== 'undefined' ? FAVORITES.size : 0;
 
   menu.innerHTML = '<div class="user-dropdown-email">' + email2 + '</div>'
-    + '<div class="user-dropdown-item" onclick="window.location.href=\\'discussions.html\\'">💬 交流区</div>'
+    + '<div class="user-dropdown-item" onclick="window.location.href=\'discussions.html\'">💬 交流区</div>'
     + '<div class="user-dropdown-item" onclick="showMyFavorites()">⭐ 我的收藏 (' + favCount + ')</div>'
-    + '<div class="user-dropdown-item" id="adminLink" style="display:none" onclick="window.location.href=\\'admin.html\\'">🛡️ 管理后台</div>'
+    + '<div class="user-dropdown-item" id="adminLink" style="display:none" onclick="window.location.href=\'admin.html\'">🛡️ 管理后台</div>'
     + '<div class="user-dropdown-item danger" onclick="doLogout()">🚪 退出登录</div>';
 
   // 异步检查管理员权限
