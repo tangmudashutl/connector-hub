@@ -1,7 +1,7 @@
 // ConnectorHUB - Supabase Auth Module (vanilla JS, no SDK, no CDN)
 // ============================================================
 var SUPABASE_URL = 'https://clwqwidwjgharpefrufv.supabase.co';
-var SUPABASE_ANON_KEY = 'sb_publishable_wZDOWH6TwiEyPUNzgcWLhQ_HAZiPYZw';
+var SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_wZDOWH6TwiEyPUNzgcWLhQ_HAZiPYZw';
 
 // ============================================================
 // 用户状态
@@ -11,7 +11,7 @@ var accessToken = null;
 // ============================================================
 // REST API helpers
 function authHeaders() {
-  var h = { 'apikey': SUPABASE_ANON_KEY, 'Content-Type': 'application/json' };
+  var h = { 'apikey': SUPABASE_PUBLISHABLE_KEY, 'Content-Type': 'application/json' };
   if (accessToken) h['Authorization'] = 'Bearer ' + accessToken;
   return h;
 }
@@ -287,14 +287,14 @@ function loadCloudFavorites() {
     .catch(function(e) { console.warn('[Auth] 加载云端收藏失败:', e.message); });
 }
 
-function saveCloudFavorite(articleId) {
+function saveCloudFavorite(articleId, articleTitle) {
   if (!accessToken || !currentUser) return;
   apiFetch('/rest/v1/favorites', {
     method: 'POST',
     body: JSON.stringify({
       user_id: currentUser.id,
       article_id: articleId,
-      article_title: articleId,
+      article_title: articleTitle || articleId,
       updated_at: new Date().toISOString()
     }),
     headers: { 'Prefer': 'return=minimal' }
