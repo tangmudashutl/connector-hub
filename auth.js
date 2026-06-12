@@ -216,9 +216,14 @@ function doSignup() {
   if (errEl) errEl.textContent = '';
   if (btn) { btn.disabled = true; btn.textContent = '注册中...'; }
 
+  var redirectTo = window.location.origin + '/index.html';
   apiFetch('/auth/v1/signup', {
     method: 'POST',
-    body: JSON.stringify({ email: email, password: password, data: { username: username } })
+    body: JSON.stringify({
+      email: email, password: password,
+      data: { username: username },
+      options: { email_redirect_to: redirectTo }
+    })
   }).then(function(data) {
     if (data.user && data.session) {
       saveSession(data.user, data.session.access_token);
@@ -250,9 +255,13 @@ function doReset() {
   if (errEl) errEl.textContent = '';
   if (btn) { btn.disabled = true; btn.textContent = '发送中...'; }
 
+  var redirectTo = window.location.origin + '/reset-password.html';
   apiFetch('/auth/v1/recover', {
     method: 'POST',
-    body: JSON.stringify({ email: email })
+    body: JSON.stringify({
+      email: email,
+      options: { redirect_to: redirectTo }
+    })
   }).then(function() {
     if (okEl) okEl.textContent = '重置邮件已发送，请检查收件箱';
     if (btn) btn.textContent = '已发送 ✓';
