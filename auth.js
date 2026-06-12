@@ -1,6 +1,10 @@
 // ConnectorHUB - Supabase Auth Module (vanilla JS, no SDK, no CDN)
 // ============================================================
-var SUPABASE_URL = 'https://clwqwidwjgharpefrufv.supabase.co';
+// 通过 Cloudflare Worker 代理访问 Supabase，解决国内 TLS 握手失败问题
+// 代理 Worker 部署后生效，URL: https://connector-hub-api-proxy.ttttad819.workers.dev
+var SUPABASE_PROXY_URL = 'https://connector-hub-api-proxy.ttttad819.workers.dev';
+var SUPABASE_DIRECT_URL = 'https://clwqwidwjgharpefrufv.supabase.co';
+var SUPABASE_URL = SUPABASE_PROXY_URL; // 默认使用代理；如需切换直连改为 SUPABASE_DIRECT_URL
 var SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_wZDOWH6TwiEyPUNzgcWLhQ_HAZiPYZw';
 
 // ============================================================
@@ -21,6 +25,25 @@ function apiFetch(path, opts) {
   opts = opts || {};
   var url = SUPABASE_URL + path;
   var headers = Object.assign(authHeaders(), opts.headers || {});
+  return doFetch(url, headers, opts)
+    .catch(function(e) {
+      // 如果代理不可用（TLS/network 错误），自动回退到直连
+      if (SUPABASE_URL !== SUPABASE_DIRECT_URL && isNetworkError(e)) {
+        console.warn('[Auth] 代理不可用，回退直连:', e.message);
+        return doFetch(SUPABASE_DIRECT_URL + path, headers, opts);
+      }
+      throw e;
+    });
+}
+
+function isNetworkError(e) {
+  var m = (e.message || '').toLowerCase();
+  return m.indexOf('failed to fetch') !== -1
+      || m.indexOf('networkerror') !== -1
+      || m.indexOf('network error') !== -1;
+}
+
+function doFetch(url, headers, opts) {
   return fetch(url, {
     method: opts.method || 'GET',
     headers: headers,

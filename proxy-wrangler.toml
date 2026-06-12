@@ -1,0 +1,6 @@
+name = "connector-hub-api-proxy"
+main = "proxy-worker.js"
+compatibility_date = "2025-01-01"
+
+# 部署命令: npx wrangler deploy
+# 部署后 Worker URL: https://connector-hub-api-proxy.ttttad819.workers.dev
