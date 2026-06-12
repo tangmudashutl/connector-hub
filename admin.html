@@ -1,0 +1,101 @@
+<!DOCTYPE html>
+<html lang="zh-CN" data-theme="dark">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>管理后台 - ConnectorHUB</title>
+<link rel="stylesheet" href="style.css">
+<link rel="stylesheet" href="auth.css">
+<link rel="stylesheet" href="admin.css">
+</head>
+<body>
+
+<header class="header">
+  <div class="header-inner">
+    <a class="logo" href="index.html"><span class="logo-icon">⬡</span><span class="logo-text">Connector<strong>HUB</strong></span></a>
+    <span class="admin-badge" id="adminBadge" style="display:none">🛡️ 管理员</span>
+    <nav class="nav">
+      <a class="nav-link" href="index.html">首页</a>
+      <a class="nav-link" href="discussions.html">💬 交流</a>
+      <a class="nav-link active" href="admin.html">⚙️ 管理</a>
+    </nav>
+    <div class="user-dropdown">
+      <button class="user-btn" id="userBtn">👤 登录</button>
+      <div class="user-dropdown-menu" id="userDropdownMenu"></div>
+    </div>
+  </div>
+</header>
+
+<!-- 非管理员看到的 -->
+<div class="admin-container" id="noAccess" style="display:none">
+  <div class="admin-no-access">
+    <div class="no-access-icon">🔒</div>
+    <h2>需要管理员权限</h2>
+    <p>请用管理员账号登录后访问此页面。</p>
+    <button class="auth-submit" style="max-width:200px;margin:0 auto;" onclick="openAuthModal('login')">前往登录</button>
+  </div>
+</div>
+
+<!-- 管理员界面 -->
+<div class="admin-container" id="adminPanel" style="display:none">
+
+  <!-- 统计卡片 -->
+  <div class="admin-stats" id="adminStats">
+    <div class="stat-card">
+      <div class="stat-icon">👥</div>
+      <div class="stat-value" id="statUsers">-</div>
+      <div class="stat-label">注册用户</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">💬</div>
+      <div class="stat-value" id="statDiscussions">-</div>
+      <div class="stat-label">讨论帖</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">↩️</div>
+      <div class="stat-value" id="statReplies">-</div>
+      <div class="stat-label">回复</div>
+    </div>
+    <div class="stat-card">
+      <div class="stat-icon">👍</div>
+      <div class="stat-value" id="statLikes">-</div>
+      <div class="stat-label">点赞</div>
+    </div>
+  </div>
+
+  <!-- Tab 切换 -->
+  <div class="admin-tabs">
+    <button class="admin-tab active" onclick="switchAdminTab('users')">👥 用户管理</button>
+    <button class="admin-tab" onclick="switchAdminTab('discussions')">💬 讨论管理</button>
+    <button class="admin-tab" onclick="switchAdminTab('replies')">↩️ 回复管理</button>
+  </div>
+
+  <!-- 工具栏 -->
+  <div class="admin-toolbar">
+    <input type="text" id="tableSearch" class="admin-search" placeholder="🔍 搜索..." oninput="filterTable()">
+    <div class="admin-actions">
+      <select id="csvSelect" class="admin-select">
+        <option value="users">导出用户 CSV</option>
+        <option value="discussions">导出讨论 CSV</option>
+        <option value="replies">导出回复 CSV</option>
+      </select>
+      <button class="admin-btn" onclick="exportCSV()">📥 导出 CSV</button>
+    </div>
+  </div>
+
+  <!-- 数据表格 -->
+  <div class="admin-table-wrap" id="tableWrap">
+    <table class="admin-table" id="adminTable">
+      <thead id="tableHead"></thead>
+      <tbody id="tableBody"></tbody>
+    </table>
+  </div>
+
+  <div class="admin-table-info" id="tableInfo"></div>
+</div>
+
+<script src="auth.js"></script>
+<script src="admin.js"></script>
+<button class="back-to-top" id="backToTop" title="返回顶部" onclick="window.scrollTo({top:0,behavior:'smooth'})">↑</button>
+</body>
+</html>

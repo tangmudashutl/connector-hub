@@ -7,6 +7,7 @@ var SUPABASE_PUBLISHABLE_KEY = 'sb_publishable_wZDOWH6TwiEyPUNzgcWLhQ_HAZiPYZw';
 // 用户状态
 var currentUser = null;
 var accessToken = null;
+var isAdminFlag = false;
 
 // ============================================================
 // REST API helpers
@@ -310,6 +311,25 @@ function removeCloudFavorite(articleId) {
 }
 
 // ============================================================
+// 管理员权限检查
+function checkIsAdmin() {
+  if (!accessToken) {
+    isAdminFlag = false;
+    return Promise.resolve(false);
+  }
+  return apiFetch('/rest/v1/rpc/is_admin', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' }
+  }).then(function(data) {
+    isAdminFlag = (data === true);
+    return isAdminFlag;
+  }).catch(function() {
+    isAdminFlag = false;
+    return false;
+  });
+}
+
+// ============================================================
 // UI 更新
 function updateUserUI() {
   var btn = document.getElementById('userBtn');
@@ -325,18 +345,35 @@ function updateUserUI() {
     btn.innerHTML = '👤 登录';
   }
 
-  // 下拉菜单
+  // 下拉菜单（异步更新，因为需要检查管理员权限）
+  updateDropdownMenu();
+}
+
+function updateDropdownMenu() {
   var menu = document.getElementById('userDropdownMenu');
   if (!menu) return;
-  if (currentUser) {
-    var email2 = currentUser.email || '';
-    var favCount = typeof FAVORITES !== 'undefined' ? FAVORITES.size : 0;
-    menu.innerHTML = '<div class="user-dropdown-email">' + email2 + '</div>'
-      + '<div class="user-dropdown-item" onclick="showMyFavorites()">⭐ 我的收藏 (' + favCount + ')</div>'
-      + '<div class="user-dropdown-item danger" onclick="doLogout()">🚪 退出登录</div>';
-  } else {
+
+  if (!currentUser) {
     menu.innerHTML = '';
+    return;
   }
+
+  var email2 = currentUser.email || '';
+  var favCount = typeof FAVORITES !== 'undefined' ? FAVORITES.size : 0;
+
+  menu.innerHTML = '<div class="user-dropdown-email">' + email2 + '</div>'
+    + '<div class="user-dropdown-item" onclick="window.location.href=\\'discussions.html\\'">💬 交流区</div>'
+    + '<div class="user-dropdown-item" onclick="showMyFavorites()">⭐ 我的收藏 (' + favCount + ')</div>'
+    + '<div class="user-dropdown-item" id="adminLink" style="display:none" onclick="window.location.href=\\'admin.html\\'">🛡️ 管理后台</div>'
+    + '<div class="user-dropdown-item danger" onclick="doLogout()">🚪 退出登录</div>';
+
+  // 异步检查管理员权限
+  checkIsAdmin().then(function(isAdmin) {
+    var adminLink = document.getElementById('adminLink');
+    if (adminLink && isAdmin) adminLink.style.display = 'flex';
+    var badge = document.getElementById('adminBadge');
+    if (badge) badge.style.display = isAdmin ? 'inline-block' : 'none';
+  });
 }
 
 function showMyFavorites() {
@@ -399,6 +436,7 @@ function initAuth() {
           try { localStorage.setItem('connectorhub_user', JSON.stringify(data)); } catch(e) {}
           updateUserUI();
           loadCloudFavorites();
+          checkIsAdmin();
           console.log('[Auth] 会话恢复成功');
         } else {
           clearSession();
