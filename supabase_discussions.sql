@@ -46,34 +46,42 @@ ALTER TABLE public.discussion_likes ENABLE ROW LEVEL SECURITY;
 -- ============================================================
 -- 讨论主贴权限：所有人可读，登录用户可写
 -- ============================================================
-CREATE POLICY IF NOT EXISTS "discussions_select" ON public.discussions
+DROP POLICY IF EXISTS "discussions_select" ON public.discussions;
+CREATE POLICY "discussions_select" ON public.discussions
   FOR SELECT USING (true);
 
-CREATE POLICY IF NOT EXISTS "discussions_insert" ON public.discussions
+DROP POLICY IF EXISTS "discussions_insert" ON public.discussions;
+CREATE POLICY "discussions_insert" ON public.discussions
   FOR INSERT WITH CHECK (auth.uid() = user_id);
 
-CREATE POLICY IF NOT EXISTS "discussions_update" ON public.discussions
+DROP POLICY IF EXISTS "discussions_update" ON public.discussions;
+CREATE POLICY "discussions_update" ON public.discussions
   FOR UPDATE USING (auth.uid() = user_id);
 
 -- ============================================================
 -- 回复权限：所有人可读，登录用户可写
 -- ============================================================
-CREATE POLICY IF NOT EXISTS "replies_select" ON public.discussion_replies
+DROP POLICY IF EXISTS "replies_select" ON public.discussion_replies;
+CREATE POLICY "replies_select" ON public.discussion_replies
   FOR SELECT USING (true);
 
-CREATE POLICY IF NOT EXISTS "replies_insert" ON public.discussion_replies
+DROP POLICY IF EXISTS "replies_insert" ON public.discussion_replies;
+CREATE POLICY "replies_insert" ON public.discussion_replies
   FOR INSERT WITH CHECK (auth.uid() = user_id);
 
 -- ============================================================
 -- 点赞权限：所有人可看，登录用户可点赞/取消
 -- ============================================================
-CREATE POLICY IF NOT EXISTS "likes_select" ON public.discussion_likes
+DROP POLICY IF EXISTS "likes_select" ON public.discussion_likes;
+CREATE POLICY "likes_select" ON public.discussion_likes
   FOR SELECT USING (true);
 
-CREATE POLICY IF NOT EXISTS "likes_insert" ON public.discussion_likes
+DROP POLICY IF EXISTS "likes_insert" ON public.discussion_likes;
+CREATE POLICY "likes_insert" ON public.discussion_likes
   FOR INSERT WITH CHECK (auth.uid() = user_id);
 
-CREATE POLICY IF NOT EXISTS "likes_delete" ON public.discussion_likes
+DROP POLICY IF EXISTS "likes_delete" ON public.discussion_likes;
+CREATE POLICY "likes_delete" ON public.discussion_likes
   FOR DELETE USING (auth.uid() = user_id);
 
 -- ============================================================
