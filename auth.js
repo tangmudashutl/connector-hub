@@ -1,36 +1,41 @@
-// ConnectorHUB - Supabase Auth Module (vanilla JS, no SDK)
+// ConnectorHUB - Supabase Auth Module (vanilla JS, no SDK, no CDN)
 // ============================================================
-const SUPABASE_URL = 'https://clwqwidwjgharpefrufv.supabase.co';
-const SUPABASE_ANON_KEY = 'sb_publishable_wZDOWH6TwiEyPUNzgcWLhQ_HAZiPYZw';
+var SUPABASE_URL = 'https://clwqwidwjgharpefrufv.supabase.co';
+var SUPABASE_ANON_KEY = 'sb_publishable_wZDOWH6TwiEyPUNzgcWLhQ_HAZiPYZw';
 
 // ============================================================
 // 用户状态
-let currentUser = null;
-let accessToken = null;
+var currentUser = null;
+var accessToken = null;
 
 // ============================================================
 // REST API helpers
 function authHeaders() {
-  const h = { 'apikey': SUPABASE_ANON_KEY, 'Content-Type': 'application/json' };
+  var h = { 'apikey': SUPABASE_ANON_KEY, 'Content-Type': 'application/json' };
   if (accessToken) h['Authorization'] = 'Bearer ' + accessToken;
   return h;
 }
 
-async function apiFetch(path, opts = {}) {
-  const url = SUPABASE_URL + path;
-  const res = await fetch(url, {
-    headers: authHeaders(),
-    ...opts
+function apiFetch(path, opts) {
+  opts = opts || {};
+  var url = SUPABASE_URL + path;
+  var headers = Object.assign(authHeaders(), opts.headers || {});
+  return fetch(url, {
+    method: opts.method || 'GET',
+    headers: headers,
+    body: opts.body || undefined
+  }).then(function(res) {
+    return res.text().then(function(text) {
+      var data;
+      try { data = JSON.parse(text); } catch(e) { data = { message: text }; }
+      if (!res.ok) {
+        var err = new Error(data.message || data.msg || ('HTTP ' + res.status));
+        err.code = data.error || data.error_code || '';
+        throw err;
+      }
+      return data;
+    });
   });
-  const text = await res.text();
-  let data;
-  try { data = JSON.parse(text); } catch (e) { data = { message: text }; }
-  if (!res.ok) {
-    const err = new Error(data.message || data.msg || ('HTTP ' + res.status));
-    err.code = data.error || data.error_code || '';
-    throw err;
-  }
-  return data;
 }
 
 // ============================================================
@@ -38,394 +43,317 @@ async function apiFetch(path, opts = {}) {
 function saveSession(user, token) {
   accessToken = token;
   currentUser = user;
-  localStorage.setItem('connectorhub_user', JSON.stringify(user));
-  localStorage.setItem('connectorhub_token', token);
+  try {
+    localStorage.setItem('connectorhub_user', JSON.stringify(user));
+    localStorage.setItem('connectorhub_token', token);
+  } catch(e) {}
 }
 
 function clearSession() {
   accessToken = null;
   currentUser = null;
-  localStorage.removeItem('connectorhub_user');
-  localStorage.removeItem('connectorhub_token');
+  try {
+    localStorage.removeItem('connectorhub_user');
+    localStorage.removeItem('connectorhub_token');
+  } catch(e) {}
 }
 
 function loadLocalSession() {
   try {
-    const u = localStorage.getItem('connectorhub_user');
-    const t = localStorage.getItem('connectorhub_token');
+    var u = localStorage.getItem('connectorhub_user');
+    var t = localStorage.getItem('connectorhub_token');
     if (u && t) {
       currentUser = JSON.parse(u);
       accessToken = t;
       return true;
     }
-  } catch (e) { /* invalid */ }
+  } catch(e) {}
   return false;
 }
 
 // ============================================================
-// Auth UI
+// Auth UI - 弹窗 HTML（用 onclick 直接调用全局函数，不依赖 addEventListener）
 function openAuthModal(tab) {
   tab = tab || 'login';
-  let overlay = document.getElementById('authOverlay');
-  if (!overlay) {
-    overlay = document.createElement('div');
-    overlay.id = 'authOverlay';
-    overlay.className = 'auth-overlay';
-    overlay.innerHTML = renderAuthModal(tab);
-    document.body.appendChild(overlay);
-  } else {
-    overlay.querySelector('.auth-body').innerHTML = renderAuthBody(tab);
+  var existing = document.getElementById('authOverlay');
+  if (existing) {
+    document.body.removeChild(existing);
   }
 
-  overlay.classList.add('active');
+  var overlay = document.createElement('div');
+  overlay.id = 'authOverlay';
+  overlay.className = 'auth-overlay active';
+  overlay.innerHTML = buildModalHTML(tab);
+  document.body.appendChild(overlay);
   document.body.style.overflow = 'hidden';
+}
 
-  overlay.querySelector('.auth-close').addEventListener('click', closeAuthModal);
-  overlay.addEventListener('click', (e) => {
-    if (e.target === overlay) closeAuthModal();
-  });
-  document.addEventListener('keydown', closeAuthOnEscape);
+function buildModalHTML(tab) {
+  return '<div class="auth-modal" onclick="event.stopPropagation()">'
+    + '<div class="auth-header">'
+    + '<h2>ConnectorHUB 账号</h2>'
+    + '<button class="auth-close" onclick="closeAuthModal()">✕</button>'
+    + '</div>'
+    + '<div id="authBodyInner">' + buildBodyHTML(tab) + '</div>'
+    + '</div>';
+}
 
-  setupAuthTabs(overlay);
-  setupAuthForms(overlay);
+function buildBodyHTML(tab) {
+  var tabs = '<div class="auth-tabs">'
+    + '<button class="auth-tab' + (tab === 'login' ? ' active' : '') + '" onclick="switchTab(\'login\')">登录</button>'
+    + '<button class="auth-tab' + (tab === 'signup' ? ' active' : '') + '" onclick="switchTab(\'signup\')">注册</button>'
+    + '</div>';
+
+  if (tab === 'reset') {
+    return '<form class="auth-form" onsubmit="doReset(); return false;">'
+      + '<p style="font-size:13px;color:#888;margin-bottom:12px;">输入注册邮箱，发送重置密码链接</p>'
+      + '<input type="email" id="resetEmail" placeholder="邮箱地址" required autocomplete="email">'
+      + '<div class="auth-error" id="resetErr"></div>'
+      + '<div class="auth-success" id="resetOk"></div>'
+      + '<button type="submit" id="resetBtn" class="auth-submit">发送重置链接</button>'
+      + '<p class="auth-alt-hint" style="margin-top:12px;"><a style="cursor:pointer;color:var(--accent);" onclick="switchTab(\'login\')">← 返回登录</a></p>'
+      + '</form>';
+  }
+
+  if (tab === 'login') {
+    return tabs
+      + '<form class="auth-form" onsubmit="doLogin(); return false;">'
+      + '<input type="email" id="loginEmail" placeholder="邮箱地址" required autocomplete="email">'
+      + '<input type="password" id="loginPassword" placeholder="密码" required autocomplete="current-password">'
+      + '<div class="auth-error" id="loginErr"></div>'
+      + '<button type="submit" id="loginBtn" class="auth-submit">登录</button>'
+      + '<p class="auth-alt-hint" style="margin-top:12px;"><a style="cursor:pointer;color:var(--accent);" onclick="switchTab(\'reset\')">忘记密码？</a></p>'
+      + '</form>';
+  }
+
+  // signup
+  return tabs
+    + '<form class="auth-form" onsubmit="doSignup(); return false;">'
+    + '<input type="text" id="signupUsername" placeholder="用户名" required autocomplete="username">'
+    + '<input type="email" id="signupEmail" placeholder="邮箱地址" required autocomplete="email">'
+    + '<input type="password" id="signupPassword" placeholder="密码（至少6位）" required autocomplete="new-password" minlength="6">'
+    + '<div class="auth-error" id="signupErr"></div>'
+    + '<button type="submit" id="signupBtn" class="auth-submit">注册</button>'
+    + '</form>';
+}
+
+function switchTab(tab) {
+  var inner = document.getElementById('authBodyInner');
+  if (inner) inner.innerHTML = buildBodyHTML(tab);
 }
 
 function closeAuthModal() {
-  const overlay = document.getElementById('authOverlay');
+  var overlay = document.getElementById('authOverlay');
   if (overlay) {
-    overlay.classList.remove('active');
+    document.body.removeChild(overlay);
     document.body.style.overflow = '';
   }
-  document.removeEventListener('keydown', closeAuthOnEscape);
 }
 
-function closeAuthOnEscape(e) {
+// 点击遮罩关闭
+document.addEventListener('click', function(e) {
+  var overlay = document.getElementById('authOverlay');
+  if (overlay && e.target === overlay) closeAuthModal();
+});
+document.addEventListener('keydown', function(e) {
   if (e.key === 'Escape') closeAuthModal();
-}
-
-function renderAuthModal(tab) {
-  return '<div class="auth-modal"><div class="auth-header"><h2>' + (tab === 'login' ? '登录 ConnectorHUB' : '注册 ConnectorHUB') + '</h2><button class="auth-close">✕</button></div><div class="auth-body">' + renderAuthBody(tab) + '</div></div>';
-}
-
-function renderAuthBody(tab) {
-  if (tab === 'reset') {
-    return '<form class="auth-form" id="authResetForm" onsubmit="return false"><p style="font-size:13px;color:var(--text-muted);margin-bottom:8px;">输入注册邮箱，我们将发送重置链接</p><input type="email" id="authResetEmail" placeholder="邮箱地址" required autocomplete="email"><div class="auth-error" id="authResetError"></div><div class="auth-success" id="authResetSuccess"></div><button type="submit" class="auth-submit">发送重置链接</button><p class="auth-alt-hint"><a onclick="switchAuthTab(\'login\')">← 返回登录</a></p></form>';
-  }
-  var isLogin = tab === 'login';
-  return '<div class="auth-tabs"><button class="auth-tab ' + (isLogin ? 'active' : '') + '" data-tab="login">登录</button><button class="auth-tab ' + (!isLogin ? 'active' : '') + '" data-tab="signup">注册</button></div>' + (isLogin ?
-    '<form class="auth-form" id="authLoginForm" onsubmit="return false"><input type="email" id="authLoginEmail" placeholder="邮箱地址" required autocomplete="email"><input type="password" id="authLoginPassword" placeholder="密码" required autocomplete="current-password"><div class="auth-error" id="authLoginError"></div><button type="submit" class="auth-submit">登录</button><p class="auth-alt-hint"><a onclick="switchAuthTab(\'reset\')">忘记密码？</a></p></form>' :
-    '<form class="auth-form" id="authSignupForm" onsubmit="return false"><input type="text" id="authSignupUsername" placeholder="用户名" required autocomplete="username"><input type="email" id="authSignupEmail" placeholder="邮箱地址" required autocomplete="email"><input type="password" id="authSignupPassword" placeholder="密码（至少6位）" required autocomplete="new-password" minlength="6"><div class="auth-error" id="authSignupError"></div><button type="submit" class="auth-submit">注册</button></form>');
-}
+});
 
 // ============================================================
-// Auth Handlers (using Supabase REST API directly)
-async function handleLogin() {
-  var email = document.getElementById('authLoginEmail').value.trim();
-  var password = document.getElementById('authLoginPassword').value;
-  var btn = document.querySelector('#authLoginForm .auth-submit');
+// Auth Handlers - 全局函数，直接被 HTML onclick 调用
+function doLogin() {
+  var email = (document.getElementById('loginEmail') || {}).value || '';
+  var password = (document.getElementById('loginPassword') || {}).value || '';
+  var btn = document.getElementById('loginBtn');
+  var errEl = document.getElementById('loginErr');
 
+  email = email.trim();
   if (!email || !password) {
-    showAuthError('authLoginError', '请填写邮箱和密码');
+    if (errEl) errEl.textContent = '请填写邮箱和密码';
     return;
   }
+  if (errEl) errEl.textContent = '';
+  if (btn) { btn.disabled = true; btn.textContent = '登录中...'; }
 
-  btn.disabled = true;
-  btn.textContent = '登录中...';
-  clearAuthError('authLoginError');
-
-  try {
-    var data = await apiFetch('/auth/v1/token?grant_type=password', {
-      method: 'POST',
-      body: JSON.stringify({ email: email, password: password })
-    });
-
-    // data = { access_token, refresh_token, expires_in, user: { id, email, ... } }
+  apiFetch('/auth/v1/token?grant_type=password', {
+    method: 'POST',
+    body: JSON.stringify({ email: email, password: password })
+  }).then(function(data) {
     saveSession(data.user, data.access_token);
     closeAuthModal();
     updateUserUI();
-    loadCloudFavorites().then(() => render());
-    showSyncBanner();
-  } catch (e) {
-    showAuthError('authLoginError', translateAuthError(e.message));
-    btn.disabled = false;
-    btn.textContent = '登录';
-  }
+    loadCloudFavorites();
+  }).catch(function(e) {
+    if (errEl) errEl.textContent = translateAuthError(e.message);
+    if (btn) { btn.disabled = false; btn.textContent = '登录'; }
+  });
 }
 
-async function handleSignup() {
-  var username = document.getElementById('authSignupUsername').value.trim();
-  var email = document.getElementById('authSignupEmail').value.trim();
-  var password = document.getElementById('authSignupPassword').value;
-  var btn = document.querySelector('#authSignupForm .auth-submit');
+function doSignup() {
+  var username = (document.getElementById('signupUsername') || {}).value || '';
+  var email = (document.getElementById('signupEmail') || {}).value || '';
+  var password = (document.getElementById('signupPassword') || {}).value || '';
+  var btn = document.getElementById('signupBtn');
+  var errEl = document.getElementById('signupErr');
 
-  if (!email || !password) { showAuthError('authSignupError', '请填写邮箱和密码'); return; }
-  if (password.length < 6) { showAuthError('authSignupError', '密码至少需要6位'); return; }
-  if (!username) { showAuthError('authSignupError', '请输入用户名'); return; }
+  username = username.trim();
+  email = email.trim();
 
-  btn.disabled = true;
-  btn.textContent = '注册中...';
-  clearAuthError('authSignupError');
+  if (!email || !password) {
+    if (errEl) errEl.textContent = '请填写邮箱和密码';
+    return;
+  }
+  if (password.length < 6) {
+    if (errEl) errEl.textContent = '密码至少需要6位';
+    return;
+  }
+  if (!username) {
+    if (errEl) errEl.textContent = '请输入用户名';
+    return;
+  }
 
-  try {
-    var data = await apiFetch('/auth/v1/signup', {
-      method: 'POST',
-      body: JSON.stringify({ email: email, password: password, data: { username: username } })
-    });
+  if (errEl) errEl.textContent = '';
+  if (btn) { btn.disabled = true; btn.textContent = '注册中...'; }
 
-    // Signup may return user directly if email confirmation is disabled
+  apiFetch('/auth/v1/signup', {
+    method: 'POST',
+    body: JSON.stringify({ email: email, password: password, data: { username: username } })
+  }).then(function(data) {
     if (data.user && data.session) {
       saveSession(data.user, data.session.access_token);
       closeAuthModal();
       updateUserUI();
-      loadCloudFavorites().then(() => render());
-      showSyncBanner();
-    } else if (data.user) {
-      // Email confirmation required
+      loadCloudFavorites();
+    } else {
+      // 需要邮箱验证
       closeAuthModal();
-      alert('注册成功！请检查邮箱验证链接后登录。');
+      alert('注册成功！请查收验证邮件后再登录。');
     }
-  } catch (e) {
-    showAuthError('authSignupError', translateAuthError(e.message));
-    btn.disabled = false;
-    btn.textContent = '注册';
-  }
+  }).catch(function(e) {
+    if (errEl) errEl.textContent = translateAuthError(e.message);
+    if (btn) { btn.disabled = false; btn.textContent = '注册'; }
+  });
 }
 
-async function handleResetPassword() {
-  var email = document.getElementById('authResetEmail').value.trim();
-  var btn = document.querySelector('#authResetForm .auth-submit');
+function doReset() {
+  var email = (document.getElementById('resetEmail') || {}).value || '';
+  var btn = document.getElementById('resetBtn');
+  var errEl = document.getElementById('resetErr');
+  var okEl = document.getElementById('resetOk');
 
-  if (!email) { showAuthError('authResetError', '请输入邮箱地址'); return; }
-
-  btn.disabled = true;
-  btn.textContent = '发送中...';
-  clearAuthError('authResetError');
-
-  try {
-    await apiFetch('/auth/v1/recover', {
-      method: 'POST',
-      body: JSON.stringify({ email: email })
-    });
-    document.getElementById('authResetSuccess').textContent = '重置邮件已发送，请检查收件箱';
-    btn.textContent = '已发送 ✓';
-  } catch (e) {
-    showAuthError('authResetError', translateAuthError(e.message));
-    btn.disabled = false;
-    btn.textContent = '发送重置链接';
+  email = email.trim();
+  if (!email) {
+    if (errEl) errEl.textContent = '请输入邮箱地址';
+    return;
   }
+  if (errEl) errEl.textContent = '';
+  if (btn) { btn.disabled = true; btn.textContent = '发送中...'; }
+
+  apiFetch('/auth/v1/recover', {
+    method: 'POST',
+    body: JSON.stringify({ email: email })
+  }).then(function() {
+    if (okEl) okEl.textContent = '重置邮件已发送，请检查收件箱';
+    if (btn) btn.textContent = '已发送 ✓';
+  }).catch(function(e) {
+    if (errEl) errEl.textContent = translateAuthError(e.message);
+    if (btn) { btn.disabled = false; btn.textContent = '发送重置链接'; }
+  });
 }
 
-async function handleLogout() {
-  try {
-    await apiFetch('/auth/v1/logout', { method: 'POST' });
-  } catch (e) { /* ignore */ }
+function doLogout() {
+  apiFetch('/auth/v1/logout', { method: 'POST' }).catch(function() {});
   clearSession();
-  loadFavorites();
   updateUserUI();
-  // Refresh page content
   if (typeof render === 'function') render();
-  if (typeof updateSidebar === 'function') updateSidebar();
 }
 
 // ============================================================
-// 同步横幅
-function showSyncBanner() {
-  var existing = document.getElementById('syncBanner');
-  if (existing) existing.remove();
+// 云端收藏同步
+function loadCloudFavorites() {
+  if (!accessToken || !currentUser) return;
 
-  var favCount = typeof FAVORITES !== 'undefined' ? FAVORITES.size : 0;
-  if (favCount === 0) return;
-
-  var banner = document.createElement('div');
-  banner.id = 'syncBanner';
-  banner.className = 'sync-banner';
-  banner.innerHTML = '<span class="sync-banner-icon">🔄</span><span>检测到本地 ' + favCount + ' 篇收藏，<a id="syncNow" style="color:var(--accent);cursor:pointer;text-decoration:underline;">点此同步到云端</a></span><button class="sync-banner-close">✕</button>';
-  var container = document.querySelector('.container');
-  if (!container) return;
-  container.prepend(banner);
-
-  banner.querySelector('.sync-banner-close').addEventListener('click', function () { banner.remove(); });
-  banner.querySelector('#syncNow').addEventListener('click', function () { syncLocalFavoritesToCloud(); });
+  apiFetch('/rest/v1/favorites?select=article_id&user_id=eq.' + currentUser.id)
+    .then(function(data) {
+      if (!data || !data.length) return;
+      var cloudIds = data.map(function(r) { return r.article_id; });
+      if (typeof FAVORITES !== 'undefined') {
+        cloudIds.forEach(function(id) { FAVORITES.add(id); });
+        if (typeof saveFavorites === 'function') saveFavorites();
+      }
+      if (typeof updateFavCount === 'function') updateFavCount();
+      if (typeof render === 'function') render();
+    })
+    .catch(function(e) { console.warn('[Auth] 加载云端收藏失败:', e.message); });
 }
 
-async function syncLocalFavoritesToCloud() {
+function saveCloudFavorite(articleId) {
   if (!accessToken || !currentUser) return;
-  var articleIds = typeof FAVORITES !== 'undefined' ? [...FAVORITES] : [];
-  var synced = 0;
+  apiFetch('/rest/v1/favorites', {
+    method: 'POST',
+    body: JSON.stringify({
+      user_id: currentUser.id,
+      article_id: articleId,
+      article_title: articleId,
+      updated_at: new Date().toISOString()
+    }),
+    headers: { 'Prefer': 'return=minimal' }
+  }).catch(function() {});
+}
 
-  for (var i = 0; i < articleIds.length; i++) {
-    var id = articleIds[i];
-    try {
-      await apiFetch('/rest/v1/favorites?user_id=eq.' + currentUser.id + '&article_id=eq.' + id, {
-        method: 'GET',
-        headers: { ...authHeaders(), 'Prefer': 'count=exact' }
-      });
-      // TODO: need upsert — for simplicity, insert if not exists
-      await apiFetch('/rest/v1/favorites', {
-        method: 'POST',
-        body: JSON.stringify({
-          user_id: currentUser.id,
-          article_id: id,
-          article_title: id,
-          updated_at: new Date().toISOString()
-        }),
-        headers: { ...authHeaders(), 'Prefer': 'return=minimal' }
-      }).catch(function () {
-        // May already exist, try PATCH
-        return apiFetch('/rest/v1/favorites?user_id=eq.' + currentUser.id + '&article_id=eq.' + id, {
-          method: 'PATCH',
-          body: JSON.stringify({ updated_at: new Date().toISOString() }),
-          headers: { ...authHeaders(), 'Prefer': 'return=minimal' }
-        });
-      });
-      synced++;
-    } catch (e) {
-      // Ignore duplicates
-    }
-  }
-
-  var banner = document.getElementById('syncBanner');
-  if (banner) {
-    banner.innerHTML = '<span class="sync-banner-icon">✅</span><span>同步完成！' + synced + '/' + articleIds.length + ' 篇收藏已保存到云端</span><button class="sync-banner-close">✕</button>';
-    banner.querySelector('.sync-banner-close').addEventListener('click', function () { banner.remove(); });
-  }
+function removeCloudFavorite(articleId) {
+  if (!accessToken || !currentUser) return;
+  apiFetch('/rest/v1/favorites?user_id=eq.' + currentUser.id + '&article_id=eq.' + articleId, {
+    method: 'DELETE',
+    headers: { 'Prefer': 'return=minimal' }
+  }).catch(function() {});
 }
 
 // ============================================================
-// 云端收藏同步 (via REST API)
-async function loadCloudFavorites() {
-  if (!accessToken || !currentUser) return;
-
-  try {
-    var data = await apiFetch('/rest/v1/favorites?select=article_id&user_id=eq.' + currentUser.id, {
-      method: 'GET',
-      headers: { ...authHeaders() }
-    });
-
-    if (!data || !data.length) return;
-
-    var cloudIds = data.map(function (r) { return r.article_id; });
-    var newFavs = new Set(typeof FAVORITES !== 'undefined' ? [...FAVORITES] : []);
-    cloudIds.forEach(function (id) { newFavs.add(id); });
-
-    if (typeof FAVORITES !== 'undefined') {
-      FAVORITES = newFavs;
-      if (typeof saveFavorites === 'function') saveFavorites();
-    }
-
-    // Upload local-only favorites to cloud
-    var localOnly = [...newFavs].filter(function (id) { return !cloudIds.includes(id); });
-    for (var i = 0; i < localOnly.length; i++) {
-      var id = localOnly[i];
-      try {
-        await apiFetch('/rest/v1/favorites', {
-          method: 'POST',
-          body: JSON.stringify({
-            user_id: currentUser.id,
-            article_id: id,
-            article_title: id,
-            updated_at: new Date().toISOString()
-          }),
-          headers: { ...authHeaders(), 'Prefer': 'return=minimal' }
-        });
-      } catch (e) { /* duplicate, ignore */ }
-    }
-
-    if (typeof updateFavCount === 'function') updateFavCount();
-    if (typeof render === 'function') render();
-  } catch (e) {
-    console.error('[Auth] 加载云端收藏失败:', e.message);
-  }
-}
-
-async function saveCloudFavorite(articleId, articleTitle) {
-  if (!accessToken || !currentUser) return;
-
-  try {
-    await apiFetch('/rest/v1/favorites', {
-      method: 'POST',
-      body: JSON.stringify({
-        user_id: currentUser.id,
-        article_id: articleId,
-        article_title: articleId,
-        updated_at: new Date().toISOString()
-      }),
-      headers: { ...authHeaders(), 'Prefer': 'return=minimal' }
-    });
-  } catch (e) { /* ignore */ }
-}
-
-async function removeCloudFavorite(articleId) {
-  if (!accessToken || !currentUser) return;
-
-  try {
-    await apiFetch('/rest/v1/favorites?user_id=eq.' + currentUser.id + '&article_id=eq.' + articleId, {
-      method: 'DELETE',
-      headers: { ...authHeaders(), 'Prefer': 'return=minimal' }
-    });
-  } catch (e) { /* ignore */ }
-}
-
-// ============================================================
-// Session restore on page load
-async function restoreSession() {
-  if (!loadLocalSession()) return false;
-
-  try {
-    var data = await apiFetch('/auth/v1/user', { method: 'GET' });
-    if (data && data.id) {
-      currentUser = data;
-      localStorage.setItem('connectorhub_user', JSON.stringify(data));
-      console.log('[Auth] 会话恢复成功');
-      return true;
-    }
-  } catch (e) {
-    console.warn('[Auth] 会话已过期，需要重新登录');
-  }
-  clearSession();
-  return false;
-}
-
-// ============================================================
-// UI
+// UI 更新
 function updateUserUI() {
   var btn = document.getElementById('userBtn');
   if (!btn) return;
-  var dropdown = document.getElementById('userDropdownMenu');
 
   if (currentUser) {
     var email = currentUser.email || '';
     var username = (currentUser.user_metadata && currentUser.user_metadata.username) || email.split('@')[0];
     btn.className = 'user-btn logged-in';
-    btn.innerHTML = '<span>👤</span> ' + username;
-
-    if (dropdown) {
-      var favCount = typeof FAVORITES !== 'undefined' ? FAVORITES.size : 0;
-      dropdown.innerHTML = '<div class="user-dropdown-email">' + email + '</div><div class="user-dropdown-item" id="menuFavorites">⭐ 我的收藏 (' + favCount + ')</div><div class="user-dropdown-item danger" id="menuLogout">🚪 退出登录</div>';
-      document.getElementById('menuLogout').addEventListener('click', function () {
-        handleLogout().then(function () { document.getElementById('userDropdownMenu').classList.remove('show'); });
-      });
-      document.getElementById('menuFavorites').addEventListener('click', function () {
-        if (typeof showFavOnly !== 'undefined') {
-          showFavOnly = true;
-          currentPage = 1;
-        }
-        document.getElementById('userDropdownMenu').classList.remove('show');
-        if (typeof render === 'function') render();
-      });
-    }
+    btn.innerHTML = '<span>👤</span> ' + (username || email);
   } else {
     btn.className = 'user-btn';
     btn.innerHTML = '👤 登录';
-    if (dropdown) dropdown.innerHTML = '';
+  }
+
+  // 下拉菜单
+  var menu = document.getElementById('userDropdownMenu');
+  if (!menu) return;
+  if (currentUser) {
+    var email2 = currentUser.email || '';
+    var favCount = typeof FAVORITES !== 'undefined' ? FAVORITES.size : 0;
+    menu.innerHTML = '<div class="user-dropdown-email">' + email2 + '</div>'
+      + '<div class="user-dropdown-item" onclick="showMyFavorites()">⭐ 我的收藏 (' + favCount + ')</div>'
+      + '<div class="user-dropdown-item danger" onclick="doLogout()">🚪 退出登录</div>';
+  } else {
+    menu.innerHTML = '';
   }
 }
 
+function showMyFavorites() {
+  var menu = document.getElementById('userDropdownMenu');
+  if (menu) menu.classList.remove('show');
+  if (typeof showFavOnly !== 'undefined') { showFavOnly = true; }
+  if (typeof currentPage !== 'undefined') { currentPage = 1; }
+  if (typeof render === 'function') render();
+}
+
+// ============================================================
+// 登录按钮点击
 function setupUserButton() {
   var btn = document.getElementById('userBtn');
   if (!btn) return;
 
-  btn.addEventListener('click', function (e) {
+  btn.onclick = function(e) {
     e.stopPropagation();
     if (currentUser) {
       var menu = document.getElementById('userDropdownMenu');
@@ -433,9 +361,9 @@ function setupUserButton() {
     } else {
       openAuthModal('login');
     }
-  });
+  };
 
-  document.addEventListener('click', function () {
+  document.addEventListener('click', function() {
     var menu = document.getElementById('userDropdownMenu');
     if (menu) menu.classList.remove('show');
   });
@@ -443,98 +371,44 @@ function setupUserButton() {
 
 // ============================================================
 // 工具函数
-function showAuthError(id, msg) {
-  var el = document.getElementById(id);
-  if (el) { el.textContent = msg; el.style.display = 'block'; }
-}
-
-function clearAuthError(id) {
-  var el = document.getElementById(id);
-  if (el) el.textContent = '';
-}
-
 function translateAuthError(msg) {
-  var map = {
-    'invalid login credentials': '邮箱或密码错误',
-    'email not confirmed': '邮箱尚未验证，请检查收件箱',
-    'user already registered': '该邮箱已注册，请直接登录',
-    'password should be at least 6 characters': '密码至少需要6位',
-    'unable to validate email address': '邮箱格式不正确',
-    'email rate limit exceeded': '请求过于频繁，请稍后再试',
-    'for security purposes': '请60秒后再试',
-    'user not found': '用户不存在'
-  };
   msg = (msg || '').toLowerCase();
-  for (var key in map) {
-    if (msg.indexOf(key) !== -1) return map[key];
-  }
-  return msg;
+  if (msg.indexOf('invalid login credentials') !== -1) return '邮箱或密码错误';
+  if (msg.indexOf('email not confirmed') !== -1) return '邮箱尚未验证，请检查收件箱';
+  if (msg.indexOf('user already registered') !== -1) return '该邮箱已注册，请直接登录';
+  if (msg.indexOf('password should be at least') !== -1) return '密码至少需要6位';
+  if (msg.indexOf('unable to validate email') !== -1) return '邮箱格式不正确';
+  if (msg.indexOf('email rate limit') !== -1) return '请求过于频繁，请稍后再试';
+  if (msg.indexOf('for security purposes') !== -1) return '请60秒后再试';
+  if (msg.indexOf('user not found') !== -1) return '用户不存在';
+  return msg || '操作失败，请重试';
 }
 
 // ============================================================
 // 初始化
-async function initAuth() {
+function initAuth() {
   setupUserButton();
 
-  try {
-    var restored = await restoreSession();
-    if (restored) {
-      updateUserUI();
-      await loadCloudFavorites();
-    }
-    console.log('[Auth] 初始化完成' + (restored ? '（已登录）' : '（未登录）'));
-  } catch (e) {
-    console.log('[Auth] 初始化完成（未登录）');
+  // 尝试恢复本地会话
+  if (loadLocalSession()) {
+    // 验证 token 是否还有效
+    apiFetch('/auth/v1/user')
+      .then(function(data) {
+        if (data && data.id) {
+          currentUser = data;
+          try { localStorage.setItem('connectorhub_user', JSON.stringify(data)); } catch(e) {}
+          updateUserUI();
+          loadCloudFavorites();
+          console.log('[Auth] 会话恢复成功');
+        } else {
+          clearSession();
+        }
+      })
+      .catch(function() {
+        clearSession();
+        updateUserUI();
+      });
   }
 }
 
 document.addEventListener('DOMContentLoaded', initAuth);
-
-// ============================================================
-// Tab 切换 + 表单绑定（之前遗漏了！）
-function setupAuthTabs(overlay) {
-  var tabs = overlay.querySelectorAll('.auth-tab');
-  for (var i = 0; i < tabs.length; i++) {
-    tabs[i].addEventListener('click', function () {
-      var tab = this.getAttribute('data-tab');
-      if (tab === 'login' || tab === 'signup') {
-        overlay.querySelector('.auth-body').innerHTML = renderAuthBody(tab);
-        setupAuthForms(overlay);
-      }
-    });
-  }
-}
-
-function setupAuthForms(overlay) {
-  var loginForm = overlay.querySelector('#authLoginForm');
-  if (loginForm) {
-    loginForm.addEventListener('submit', function (e) {
-      e.preventDefault();
-      handleLogin();
-    });
-  }
-
-  var signupForm = overlay.querySelector('#authSignupForm');
-  if (signupForm) {
-    signupForm.addEventListener('submit', function (e) {
-      e.preventDefault();
-      handleSignup();
-    });
-  }
-
-  var resetForm = overlay.querySelector('#authResetForm');
-  if (resetForm) {
-    resetForm.addEventListener('submit', function (e) {
-      e.preventDefault();
-      handleResetPassword();
-    });
-  }
-}
-
-function switchAuthTab(tab) {
-  var overlay = document.getElementById('authOverlay');
-  if (overlay) {
-    overlay.querySelector('.auth-body').innerHTML = renderAuthBody(tab);
-    setupAuthForms(overlay);
-  }
-}
