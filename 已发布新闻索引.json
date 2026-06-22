@@ -49,8 +49,8 @@
       "html_file": "2026-W26-全球连接器周报-可粘贴.html",
       "txt_file": "2026-W26-全球连接器周报-纯文本.txt",
       "cover_file": "封面图-2026-W26.png",
-      "draft_status": "pending_publish",
-      "dedup_note": "已与W25交叉比对，TI&TE涨价为W26新进展(确认7月落地+具体区间)，中航光电液冷规模化出货为6月17日最新动态，Molex SInergy新品为6月15日发布",
+      "draft_status": "published",
+      "dedup_note": "已与W25逐条交叉比对：无直接重复。液冷主题(W25市场预测 vs W26厂商落地)、448G(W25大会 vs W26标准参与)为不同角度互补。中航光电(W25专利 vs W26液冷出货)为不同事件。",
       "news_items": [
         "TI与TE联合宣布7月涨价落地 涨幅5%-25%",
         "Molex AirBorn SInergy扩展大功率混合连接器模块",
