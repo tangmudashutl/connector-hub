@@ -1,0 +1,68 @@
+{
+  "published_weeks": [
+    {
+      "week": "2026-W24",
+      "title": "全球连接器周报W24",
+      "digest": "一周连接器产业要闻速览",
+      "published_date": "2026-06-08",
+      "draft_status": "published",
+      "news_items": [
+        "黄仁勋GTC台北定调铜光并进互连路线",
+        "三大连接器巨头7月集体涨价(Amphenol 5-15%/Molex 5-30%/TE)",
+        "鼎通科技224G批量供货+5条液冷产线扩建",
+        "Arxis 8.9亿美元收购Omnetics",
+        "Molex Computex发布多通道液冷母排",
+        "立讯/中航光电Computex首展AI-Ready工业连接器",
+        "中航光电获片式接触件及高压互锁短接结构专利",
+        "224G→448G高速互连演进分析CPC与CPO",
+        "460nm保偏光纤连接器国产化突破"
+      ]
+    },
+    {
+      "week": "2026-W25",
+      "title": "全球连接器周报W25",
+      "digest": "448G高速互连技术大会成功举办；Hirose COM-HPC BGA连接器支持PCIe Gen6；Samtec高频RF互连矩阵扩展至67GHz；液冷连接器市场2031年达8.7亿美元",
+      "published_date": "2026-06-15",
+      "html_file": "2026-W25-全球连接器周报-可粘贴.html",
+      "txt_file": "2026-W25-全球连接器周报-纯文本.txt",
+      "cover_file": "封面图-2026-W25.png",
+      "draft_status": "pending_publish",
+      "dedup_note": "已与W24交叉比对，删除1条完全重复(三大巨头涨价)和1条时效率低(中航光电北京车展5月事件)，替换为Hirose IT18+Samtec高频RF新品",
+      "news_items": [
+        "Hirose发布IT18 COM-HPC BGA连接器 PCIe Gen6 64GT/s",
+        "2026 448G高速互连技术大会",
+        "全球液冷连接器市场3.5亿→8.7亿美元",
+        "electronica Shanghai 2026",
+        "中航光电小体积大电流电连接器专利",
+        "Samtec高频RF互连新品SMA+SMPM DC-67GHz",
+        "HARTING墨西哥工厂10周年",
+        "MIPI A-PHY合规计划",
+        "永贵科技LTF系列盲插式流体连接器",
+        "ECIA 2026执行会议主题"
+      ]
+    },
+    {
+      "week": "2026-W26",
+      "title": "全球连接器周报W26",
+      "digest": "TI与TE确认7月涨价落地；中航光电液冷连接器头部客户规模化出货；Molex AirBorn SInergy扩展高功率模块；448G标准加速推进国产替代",
+      "published_date": "2026-06-22",
+      "html_file": "2026-W26-全球连接器周报-可粘贴.html",
+      "txt_file": "2026-W26-全球连接器周报-纯文本.txt",
+      "cover_file": "封面图-2026-W26.png",
+      "draft_status": "pending_publish",
+      "dedup_note": "已与W25交叉比对，TI&TE涨价为W26新进展(确认7月落地+具体区间)，中航光电液冷规模化出货为6月17日最新动态，Molex SInergy新品为6月15日发布",
+      "news_items": [
+        "TI与TE联合宣布7月涨价落地 涨幅5%-25%",
+        "Molex AirBorn SInergy扩展大功率混合连接器模块",
+        "中航光电液冷连接器头部客户规模化应用",
+        "中航光电光模块液冷领域批量出货",
+        "中航光电448G高速互连进展及行业标准参与",
+        "Greenconn亮相electronica China 2026",
+        "TE Connectivity上调Q2盈利预期 AI数据中心需求驱动",
+        "连接器涨价潮深度分析：供给紧张与AI需求共振",
+        "中航光电民品数据中心布局 机构密集调研",
+        "高速连接器国产替代趋势加速 份额持续提升"
+      ]
+    }
+  ]
+}
